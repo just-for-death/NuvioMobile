@@ -1,0 +1,283 @@
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  container: {
+    marginBottom: 28,
+    paddingTop: 0,
+    marginTop: 12,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  titleContainer: {
+    position: 'relative',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  titleUnderline: {
+    position: 'absolute',
+    bottom: -2,
+    left: 0,
+    width: 40,
+    height: 3,
+    borderRadius: 2,
+    opacity: 0.8,
+  },
+  wideList: {
+    paddingBottom: 8,
+    paddingTop: 4,
+  },
+  wideContentItem: {
+    width: 280,
+    height: 120,
+    flexDirection: 'row',
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  posterContainer: {
+    width: 80,
+    height: '100%',
+    position: 'relative',
+  },
+  continueWatchingPoster: {
+    width: '100%',
+    height: '100%',
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+  },
+  deletingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+  },
+  contentDetails: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  contentTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    flex: 1,
+    marginRight: 8,
+  },
+  progressBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    minWidth: 44,
+    alignItems: 'center',
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  episodeRow: {
+    marginBottom: 8,
+  },
+  episodeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  episodeTitle: {
+    fontSize: 12,
+  },
+  yearText: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  wideProgressContainer: {
+    marginTop: 'auto',
+  },
+  wideProgressTrack: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    marginBottom: 4,
+  },
+  wideProgressBar: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  progressLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  posterContentItem: {
+    overflow: 'visible',
+  },
+  posterImageContainer: {
+    width: '100%',
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.15)',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+  },
+  posterImage: {
+    width: '100%',
+    height: '100%',
+  },
+  posterGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+  },
+  posterEpisodeOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  posterEpisodeText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  posterUpNextBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  posterUpNextText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  posterProgressContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  posterProgressTrack: {
+    height: 4,
+  },
+  posterProgressBar: {
+    height: '100%',
+  },
+  posterTitleContainer: {
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  posterTitle: {
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 18,
+  },
+  posterProgressLabel: {
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  actionSheetContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  actionSheetHeader: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  actionSheetPoster: {
+    width: 70,
+    height: 105,
+    borderRadius: 10,
+    marginRight: 16,
+  },
+  actionSheetInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  actionSheetTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 6,
+    lineHeight: 22,
+  },
+  actionSheetSubtitle: {
+    fontSize: 14,
+    opacity: 0.8,
+    lineHeight: 20,
+  },
+  actionSheetProgressContainer: {
+    marginTop: 10,
+  },
+  actionSheetProgressTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  actionSheetProgressBar: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  actionSheetProgressText: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  actionSheetButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 8,
+  },
+  actionButtonSecondary: {
+    borderWidth: 0,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+});

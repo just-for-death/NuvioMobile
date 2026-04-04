@@ -1,0 +1,34 @@
+workflows:
+  build-unsigned-ipa:
+    name: Build Unsigned IPA
+    instance_type: mac_mini_m2
+    environment:
+      vars:
+        IOS_WORKSPACE: "ios/Nuvio.xcworkspace"
+        IOS_SCHEME: "Nuvio"
+    scripts:
+      - name: Install dependencies
+        script: npm install --legacy-peer-deps
+      - name: Expo Prebuild
+        script: npx expo prebuild --platform ios --clean
+      - name: Install CocoaPods
+        script: cd ios && pod install
+      - name: Build Archive (Unsigned)
+        script: |
+          xcodebuild archive \
+            -workspace "$IOS_WORKSPACE" \
+            -scheme "$IOS_SCHEME" \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath "$CM_BUILD_DIR/build.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+      - name: Create Unsigned IPA
+        script: |
+          mkdir -p Payload
+          cp -r "$CM_BUILD_DIR/build.xcarchive/Products/Applications/Nuvio.app" Payload/
+          zip -r "unsigned_build.ipa" Payload
+          rm -rf Payload
+    artifacts:
+      - unsigned_build.ipa

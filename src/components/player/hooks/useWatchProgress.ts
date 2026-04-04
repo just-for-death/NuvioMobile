@@ -1,0 +1,257 @@
+import { useState, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
+import { storageService } from '../../../services/storageService';
+import { logger } from '../../../utils/logger';
+import { useSettings } from '../../../hooks/useSettings';
+import { watchedService } from '../../../services/watchedService';
+
+export const useWatchProgress = (
+    id: string | undefined,
+    type: string | undefined,
+    episodeId: string | undefined,
+    currentTime: number,
+    duration: number,
+    paused: boolean,
+    traktAutosync: any,
+    seekToTime: (time: number) => void,
+    addonId?: string,
+    // New parameters for MAL scrobbling
+    imdbId?: string,
+    season?: number,
+    episode?: number,
+    releaseDate?: string,
+    malId?: number,
+    dayIndex?: number,
+    tmdbId?: number,
+    isInPictureInPicture: boolean = false,
+    title?: string
+) => {
+    const [resumePosition, setResumePosition] = useState<number | null>(null);
+    const [savedDuration, setSavedDuration] = useState<number | null>(null);
+    const [initialPosition, setInitialPosition] = useState<number | null>(null);
+    const [showResumeOverlay, setShowResumeOverlay] = useState(false);
+    const { settings: appSettings } = useSettings();
+    const initialSeekTargetRef = useRef<number | null>(null);
+    const hasScrobbledRef = useRef(false);
+    const wasPausedRef = useRef<boolean>(paused);
+    const [progressSaveInterval, setProgressSaveInterval] = useState<NodeJS.Timeout | null>(null);
+
+    // Values refs for unmount cleanup and stale closure prevention
+    const currentTimeRef = useRef(currentTime);
+    const durationRef = useRef(duration);
+    const imdbIdRef = useRef(imdbId);
+    const seasonRef = useRef(season);
+    const episodeRef = useRef(episode);
+    const releaseDateRef = useRef(releaseDate);
+    const malIdRef = useRef(malId);
+    const dayIndexRef = useRef(dayIndex);
+    const tmdbIdRef = useRef(tmdbId);
+    const isInPictureInPictureRef = useRef(isInPictureInPicture);
+    const titleRef = useRef(title);
+
+    // Sync refs
+    useEffect(() => {
+        imdbIdRef.current = imdbId;
+        seasonRef.current = season;
+        episodeRef.current = episode;
+        releaseDateRef.current = releaseDate;
+        malIdRef.current = malId;
+        dayIndexRef.current = dayIndex;
+        tmdbIdRef.current = tmdbId;
+        isInPictureInPictureRef.current = isInPictureInPicture;
+        titleRef.current = title;
+    }, [imdbId, season, episode, releaseDate, malId, dayIndex, tmdbId, isInPictureInPicture, title]);
+
+    // Reset scrobble flag when content changes
+    useEffect(() => {
+        hasScrobbledRef.current = false;
+    }, [id, episodeId]);
+
+    useEffect(() => {
+        currentTimeRef.current = currentTime;
+    }, [currentTime]);
+
+    useEffect(() => {
+        durationRef.current = duration;
+    }, [duration]);
+
+    // Keep latest traktAutosync ref to avoid dependency cycles in listeners
+    const traktAutosyncRef = useRef(traktAutosync);
+    useEffect(() => {
+        traktAutosyncRef.current = traktAutosync;
+    }, [traktAutosync]);
+
+    // AppState Listener for background save
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', async (nextAppState) => {
+            if (nextAppState.match(/inactive|background/)) {
+                if (id && type && durationRef.current > 0) {
+                    logger.log('[useWatchProgress] App backgrounded, saving progress');
+
+                    // Local save
+                    const progress = {
+                        currentTime: currentTimeRef.current,
+                        duration: durationRef.current,
+                        lastUpdated: Date.now(),
+                        addonId: addonId
+                    };
+                    try {
+                        await storageService.setWatchProgress(id, type, progress, episodeId);
+
+                        if (isInPictureInPictureRef.current) {
+                            logger.log('[useWatchProgress] In PiP mode, skipping background playback end sync');
+                        } else {
+                            // Trakt sync (end session)
+                            // Use 'user_close' to force immediate sync
+                            await traktAutosyncRef.current.handlePlaybackEnd(currentTimeRef.current, durationRef.current, 'user_close');
+                        }
+                    } catch (error) {
+                        logger.error('[useWatchProgress] Error saving background progress:', error);
+                    }
+                }
+            }
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, [id, type, episodeId, addonId]);
+
+    // Load Watch Progress
+    useEffect(() => {
+        const loadWatchProgress = async () => {
+            if (id && type) {
+                try {
+                    const savedProgress = await storageService.getWatchProgress(id, type, episodeId);
+                    console.log('[useWatchProgress] Loaded saved progress:', savedProgress);
+
+                    if (savedProgress) {
+                        const progressPercent = (savedProgress.currentTime / savedProgress.duration) * 100;
+                        console.log('[useWatchProgress] Progress percent:', progressPercent);
+
+                        if (progressPercent < 85) {
+                            setResumePosition(savedProgress.currentTime);
+                            setSavedDuration(savedProgress.duration);
+
+                            if (appSettings.alwaysResume) {
+                                console.log('[useWatchProgress] Always resume enabled, setting initial position:', savedProgress.currentTime);
+                                setInitialPosition(savedProgress.currentTime);
+                                initialSeekTargetRef.current = savedProgress.currentTime;
+                                // Don't call seekToTime here - duration is 0
+                                // The seek will be handled in handleLoad callback
+                            } else {
+                                setShowResumeOverlay(true);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    logger.error('[useWatchProgress] Error loading watch progress:', error);
+                }
+            }
+        };
+        loadWatchProgress();
+    }, [id, type, episodeId, appSettings.alwaysResume]);
+
+    const saveWatchProgress = async () => {
+        if (id && type && currentTimeRef.current > 0 && durationRef.current > 0) {
+            const progress = {
+                currentTime: currentTimeRef.current,
+                duration: durationRef.current,
+                lastUpdated: Date.now(),
+                addonId: addonId
+            };
+            try {
+                await storageService.setWatchProgress(id, type, progress, episodeId);
+                await traktAutosync.handleProgressUpdate(currentTimeRef.current, durationRef.current);
+
+                // Requirement 1: Auto Episode Tracking (>= 90% completion)
+                const progressPercent = (currentTimeRef.current / durationRef.current) * 100;
+                if (progressPercent >= 90 && !hasScrobbledRef.current) {
+                    hasScrobbledRef.current = true;
+                    logger.log(`[useWatchProgress] 90% threshold reached, scrobbling to MAL...`);
+                    
+                    const currentImdbId = imdbIdRef.current;
+                    const currentSeason = seasonRef.current;
+                    const currentEpisode = episodeRef.current;
+                    const currentReleaseDate = releaseDateRef.current;
+                    const currentMalId = malIdRef.current;
+                    const currentDayIndex = dayIndexRef.current;
+                    const currentTmdbId = tmdbIdRef.current;
+                    const currentTitle = titleRef.current;
+
+                    if (type === 'series' && currentImdbId && currentSeason !== undefined && currentEpisode !== undefined) {
+                        watchedService.markEpisodeAsWatched(
+                            currentImdbId, 
+                            id, 
+                            currentSeason, 
+                            currentEpisode, 
+                            new Date(), 
+                            currentReleaseDate,
+                            undefined,
+                            currentMalId,
+                            currentDayIndex,
+                            currentTmdbId
+                        );
+                    } else if (type === 'movie' && currentImdbId) {
+                        watchedService.markMovieAsWatched(currentImdbId, new Date(), currentMalId, currentTmdbId, currentTitle);
+                    }
+                }
+            } catch (error) {
+                logger.error('[useWatchProgress] Error saving watch progress:', error);
+            }
+        }
+    };
+
+    
+    useEffect(() => {
+        // Handle pause transitions (upstream)
+        if (wasPausedRef.current !== paused) {
+            const becamePaused = paused;
+            wasPausedRef.current = paused;
+            if (becamePaused) {
+                void saveWatchProgress();
+            }
+        }
+
+        // Handle periodic save when playing (MAL branch)
+        if (id && type && !paused) {
+            if (progressSaveInterval) clearInterval(progressSaveInterval);
+
+            // Use refs inside the interval so we don't need to restart it on every second
+            const interval = setInterval(() => {
+                saveWatchProgress();
+            }, 10000);
+
+            setProgressSaveInterval(interval);
+            return () => {
+                clearInterval(interval);
+                setProgressSaveInterval(null);
+            };
+        }
+    }, [id, type, paused]);
+
+    // Unmount Save - deferred to allow navigation to complete first
+    useEffect(() => {
+        return () => {
+            // Use setTimeout(0) to defer save operations to next event loop tick
+            // This allows navigation animations to complete smoothly
+            setTimeout(() => {
+                if (id && type && durationRef.current > 0) {
+                    saveWatchProgress();
+                    traktAutosync.handlePlaybackEnd(currentTimeRef.current, durationRef.current, 'unmount');
+                }
+            }, 0);
+        };
+    }, [id, type]);
+
+    return {
+        resumePosition,
+        savedDuration,
+        initialPosition,
+        setInitialPosition,
+        showResumeOverlay,
+        setShowResumeOverlay,
+        saveWatchProgress,
+        initialSeekTargetRef
+    };
+};

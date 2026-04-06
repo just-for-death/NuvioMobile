@@ -1,4 +1,46 @@
 workflows:
+  ios-release:
+    name: Build Signed Release IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      groups:
+        - ios-signing # Group containing App Store Connect API keys
+      vars:
+        XCODE_WORKSPACE: "ios/Nuvio.xcworkspace"
+        XCODE_SCHEME: "Nuvio"
+        BUNDLE_ID: "com.nuvio.hub"
+      node: v20.12.2
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Initialize keychain
+        script: |
+          keychain initialize
+      - name: Fetch Apple certificates and profiles
+        script: |
+          # The following variables must be set in Codemagic environment:
+          # APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_PRIVATE_KEY
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Install dependencies
+        script: |
+          npm install --legacy-peer-deps
+      - name: Install CocoaPods
+        script: |
+          cd ios && pod install
+      - name: Build IPA for App Store
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME" \
+            --export-options-plist "ios/ExportOptions.plist"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
   build-unsigned-ipa:
     name: Build Unsigned IPA
     instance_type: mac_mini_m2

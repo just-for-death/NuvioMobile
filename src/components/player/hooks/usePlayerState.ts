@@ -1,14 +1,10 @@
-/**
- * Shared Player State Hook
- * Used by both Android (VLC) and iOS (KSPlayer) players
- */
-import { useState, useRef } from 'react';
-import { Dimensions, Platform } from 'react-native';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { useWindowDimensions, Platform } from 'react-native';
 
 // Use only resize modes supported by all player backends
-// (not all players support 'stretch' or 'none')
 export type PlayerResizeMode = 'contain' | 'cover' | 'stretch';
 
+// Hook for shared player state logic
 export const usePlayerState = () => {
     // Playback State
     const [paused, setPaused] = useState(false);
@@ -24,8 +20,9 @@ export const usePlayerState = () => {
     const [resizeMode, setResizeMode] = useState<PlayerResizeMode>('contain');
     const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
     const [is16by9Content, setIs16by9Content] = useState(false);
-    const screenData = Dimensions.get('screen');
-    const [screenDimensions, setScreenDimensions] = useState(screenData);
+    
+    // Use the hook for responsive dimensions
+    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
     // Zoom State
     const [zoomScale, setZoomScale] = useState(1);
@@ -48,12 +45,15 @@ export const usePlayerState = () => {
     const lastSeekTime = useRef<number>(0);
     const wasPlayingBeforeDragRef = useRef<boolean>(false);
 
-    // Helper for iPad/macOS fullscreen
-    const isIPad = Platform.OS === 'ios' && (screenData.width > 1000 || screenData.height > 1000);
-    const isMacOS = Platform.OS === 'ios' && Platform.isPad === true;
-    const shouldUseFullscreen = isIPad || isMacOS;
-    const windowData = Dimensions.get('window');
-    const effectiveDimensions = shouldUseFullscreen ? windowData : screenDimensions;
+    // Reliable iPad/macOS detection
+    const isIPad = Platform.OS === 'ios' && Platform.isPad === true;
+    const isIos = Platform.OS === 'ios';
+    
+    // In split-screen/multitasking, we should use window dimensions, not screen dimensions
+    const effectiveDimensions = useMemo(() => ({
+        width: windowWidth,
+        height: windowHeight
+    }), [windowWidth, windowHeight]);
 
     return {
         paused, setPaused,
@@ -67,7 +67,7 @@ export const usePlayerState = () => {
         resizeMode, setResizeMode,
         videoAspectRatio, setVideoAspectRatio,
         is16by9Content, setIs16by9Content,
-        screenDimensions, setScreenDimensions,
+        screenDimensions: effectiveDimensions,
         zoomScale, setZoomScale,
         zoomTranslateX, setZoomTranslateX,
         zoomTranslateY, setZoomTranslateY,
@@ -83,6 +83,8 @@ export const usePlayerState = () => {
         pendingSeekValue,
         lastSeekTime,
         wasPlayingBeforeDragRef,
-        effectiveDimensions
+        effectiveDimensions,
+        isIPad,
+        isIos
     };
 };

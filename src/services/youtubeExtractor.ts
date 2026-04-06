@@ -77,8 +77,8 @@ const DEFAULT_HEADERS: Record<string, string> = {
   'user-agent': DEFAULT_USER_AGENT,
 };
 
-const REQUEST_TIMEOUT_MS = 6000;        // player API + HLS manifest requests
-const WATCH_PAGE_TIMEOUT_MS = 3000;    // watch page scrape — best-effort only
+const REQUEST_TIMEOUT_MS = 8000;        // player API + HLS manifest requests
+const WATCH_PAGE_TIMEOUT_MS = 5000;    // watch page scrape — best-effort only
 const MAX_RETRIES = 2;                  // retry extraction up to 2 times on total failure
 
 interface ClientDef {

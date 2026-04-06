@@ -216,9 +216,43 @@ let cachedSettings: AppSettings | null = null;
 let settingsCacheTimestamp = 0;
 const SETTINGS_CACHE_TTL = 60000; // 1 minute
 
+/**
+ * Synchronously retrieves current settings from MMKV with proper scoping and fallback.
+ */
+export const getSettings = (): AppSettings => {
+  try {
+    // Check cache first
+    const now = Date.now();
+    if (cachedSettings && (now - settingsCacheTimestamp) < SETTINGS_CACHE_TTL) {
+      return cachedSettings;
+    }
+
+    const scope = mmkvStorage.getString('@user:current') || 'local';
+    const scopedKey = `@user:${scope}:${SETTINGS_STORAGE_KEY}`;
+
+    const scopedJson = mmkvStorage.getString(scopedKey);
+    const legacyJson = mmkvStorage.getString(SETTINGS_STORAGE_KEY);
+
+    const parsedScoped = scopedJson ? JSON.parse(scopedJson) : null;
+    const parsedLegacy = legacyJson ? JSON.parse(legacyJson) : null;
+
+    const merged = parsedScoped || parsedLegacy;
+    const finalSettings = merged ? { ...DEFAULT_SETTINGS, ...merged } : DEFAULT_SETTINGS;
+
+    // Update global cache
+    cachedSettings = finalSettings;
+    settingsCacheTimestamp = now;
+
+    return finalSettings;
+  } catch (error) {
+    if (__DEV__) console.error('[getSettings] Failed to load settings:', error);
+    return DEFAULT_SETTINGS;
+  }
+};
+
 export const useSettings = () => {
-  const [settings, setSettings] = useState<AppSettings>(() => cachedSettings || DEFAULT_SETTINGS);
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [settings, setSettings] = useState<AppSettings>(getSettings);
+  const [isLoaded, setIsLoaded] = useState<boolean>(true);
 
   useEffect(() => {
     loadSettings();
@@ -231,58 +265,11 @@ export const useSettings = () => {
     return unsubscribe;
   }, []);
 
-  const loadSettings = async () => {
-    try {
-      // Use cached settings if available and fresh
-      const now = Date.now();
-      if (cachedSettings && (now - settingsCacheTimestamp) < SETTINGS_CACHE_TTL) {
-        setSettings(cachedSettings);
-        setIsLoaded(true);
-        return;
-      }
-
-      const scope = (await mmkvStorage.getItem('@user:current')) || 'local';
-      const scopedKey = `@user:${scope}:${SETTINGS_STORAGE_KEY}`;
-
-      // Use synchronous MMKV reads for better performance
-      const [scopedJson, legacyJson] = await Promise.all([
-        mmkvStorage.getItem(scopedKey),
-        mmkvStorage.getItem(SETTINGS_STORAGE_KEY),
-      ]);
-
-      const parsedScoped = scopedJson ? JSON.parse(scopedJson) : null;
-      const parsedLegacy = legacyJson ? JSON.parse(legacyJson) : null;
-
-      let merged = parsedScoped || parsedLegacy;
-
-      // Simplified fallback - only use getAllKeys if absolutely necessary
-      if (!merged) {
-        // Use string search on MMKV storage instead of getAllKeys for performance
-        const scoped = mmkvStorage.getString(scopedKey);
-        if (scoped) {
-          try {
-            merged = JSON.parse(scoped);
-          } catch { }
-        }
-      }
-
-      const finalSettings = merged ? { ...DEFAULT_SETTINGS, ...merged } : DEFAULT_SETTINGS;
-
-      // Update cache
-      cachedSettings = finalSettings;
-      settingsCacheTimestamp = now;
-
-      setSettings(finalSettings);
-    } catch (error) {
-      if (__DEV__) console.error('Failed to load settings:', error);
-      // Fallback to default settings on error
-      setSettings(DEFAULT_SETTINGS);
-    }
-    finally {
-      // Mark settings as loaded so UI can render with correct values without flicker
-      setIsLoaded(true);
-    }
-  };
+  const loadSettings = useCallback(() => {
+    const newSettings = getSettings();
+    setSettings(newSettings);
+    setIsLoaded(true);
+  }, []);
 
   const updateSetting = useCallback(async <K extends keyof AppSettings>(
     key: K,
@@ -290,38 +277,24 @@ export const useSettings = () => {
     emitEvent: boolean = true
   ) => {
     try {
-      const scope = (await mmkvStorage.getItem('@user:current')) || 'local';
+      const scope = mmkvStorage.getString('@user:current') || 'local';
       const scopedKey = `@user:${scope}:${SETTINGS_STORAGE_KEY}`;
+      
       // Always merge against the latest persisted/cached settings to avoid stale-overwrite races
-      // when multiple screens update settings concurrently.
-      let baseSettings: AppSettings = cachedSettings || DEFAULT_SETTINGS;
-      if (!cachedSettings) {
-        const [scopedJson, legacyJson] = await Promise.all([
-          mmkvStorage.getItem(scopedKey),
-          mmkvStorage.getItem(SETTINGS_STORAGE_KEY),
-        ]);
-        const parsedScoped = scopedJson ? JSON.parse(scopedJson) : null;
-        const parsedLegacy = legacyJson ? JSON.parse(legacyJson) : null;
-        const merged = parsedScoped || parsedLegacy;
-        if (merged) {
-          baseSettings = { ...DEFAULT_SETTINGS, ...merged };
-        }
-      }
-
+      const baseSettings: AppSettings = getSettings();
       const newSettings = { ...baseSettings, [key]: value };
 
-      // Update cache/UI immediately so subsequent updates in the same tick see fresh state.
+      // Update cache/UI immediately
       cachedSettings = newSettings;
       settingsCacheTimestamp = Date.now();
       setSettings(newSettings);
 
       // Write to both scoped key (multi-user aware) and legacy key for backward compatibility
-      await Promise.all([
-        mmkvStorage.setItem(scopedKey, JSON.stringify(newSettings)),
-        mmkvStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings)),
-      ]);
-      // Ensure a current scope exists to avoid future loads missing the chosen scope
-      await mmkvStorage.setItem('@user:current', scope);
+      mmkvStorage.setString(scopedKey, JSON.stringify(newSettings));
+      mmkvStorage.setString(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
+      
+      // Ensure a current scope exists
+      mmkvStorage.setString('@user:current', scope);
       if (__DEV__) console.log(`Setting updated: ${key}`, value);
 
       // Notify all subscribers that settings have changed (if requested)

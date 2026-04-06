@@ -86,10 +86,7 @@ class MMKVStorage {
 
   async removeItem(key: string): Promise<void> {
     try {
-      // MMKV V4 uses 'remove' method, not 'delete'
-      if (this.storage.contains(key)) {
-        this.storage.remove(key);
-      }
+      this.delete(key);
       // Invalidate cache
       this.invalidateCache(key);
     } catch (error) {
@@ -162,6 +159,7 @@ class MMKVStorage {
   delete(key: string): void {
     if (this.storage.contains(key)) {
       this.storage.remove(key);
+      this.invalidateCache(key);
     }
   }
 
@@ -181,6 +179,7 @@ class MMKVStorage {
       for (const key of keys) {
         if (this.storage.contains(key)) {
           this.storage.remove(key);
+          this.invalidateCache(key);
         }
       }
     } catch (error) {

@@ -28,10 +28,28 @@ class StorageService {
   private readonly NOTIFICATION_DEBOUNCE_MS = 1000; // 1 second debounce
   private readonly MIN_NOTIFICATION_INTERVAL = 500; // Minimum 500ms between notifications
 
+  // Mutex for atomic write operations
+  private storageMutex: Promise<void> = Promise.resolve();
+
   // Cache for getAllWatchProgress
   private watchProgressCache: Record<string, WatchProgress> | null = null;
   private watchProgressCacheTimestamp = 0;
   private readonly WATCH_PROGRESS_CACHE_TTL = 5000; // 5 seconds
+
+  private async withMutex<T>(fn: () => Promise<T>): Promise<T> {
+    const previousMutex = this.storageMutex;
+    let resolveMutex: () => void;
+    this.storageMutex = new Promise<void>(resolve => {
+      resolveMutex = resolve;
+    });
+
+    try {
+      await previousMutex;
+      return await fn();
+    } finally {
+      resolveMutex!();
+    }
+  }
 
   private constructor() { }
 
@@ -261,41 +279,40 @@ class StorageService {
     episodeId?: string,
     options?: { preserveTimestamp?: boolean; forceNotify?: boolean; forceWrite?: boolean }
   ): Promise<void> {
-    try {
-      const key = await this.getWatchProgressKeyScoped(id, type, episodeId);
-      // Do not resurrect if tombstone exists and is newer than this progress
+    return this.withMutex(async () => {
       try {
+        const key = await this.getWatchProgressKeyScoped(id, type, episodeId);
+        // Do not resurrect if tombstone exists and is newer than this progress
         const tombstones = await this.getWatchProgressTombstones();
         const exactKey = this.buildWpKeyString(id, type, episodeId);
         const baseKey = this.buildWpKeyString(id, type, undefined);
         const exactTombAt = tombstones[exactKey];
         const baseTombAt = tombstones[baseKey];
         const newestTombAt = Math.max(exactTombAt || 0, baseTombAt || 0);
+        
         if (newestTombAt && (progress.lastUpdated == null || progress.lastUpdated <= newestTombAt)) {
           return;
         }
-      } catch { }
 
-      // Check if progress has actually changed significantly, unless forceWrite is requested
-      if (!options?.forceWrite) {
-        const existingProgress = await this.getWatchProgress(id, type, episodeId);
-        if (existingProgress) {
-          const timeDiff = Math.abs(progress.currentTime - existingProgress.currentTime);
-          const durationDiff = Math.abs(progress.duration - existingProgress.duration);
+        // Check if progress has actually changed significantly, unless forceWrite is requested
+        if (!options?.forceWrite) {
+          const existingProgress = await this.getWatchProgress(id, type, episodeId);
+          if (existingProgress) {
+            const timeDiff = Math.abs(progress.currentTime - existingProgress.currentTime);
+            const durationDiff = Math.abs(progress.duration - existingProgress.duration);
 
-          // Only update if there's a significant change (>5 seconds or duration change)
-          if (timeDiff < 5 && durationDiff < 1) {
-            return; // Skip update for minor changes
+            // Only update if there's a significant change (>5 seconds or duration change)
+            if (timeDiff < 5 && durationDiff < 1) {
+              return; // Skip update for minor changes
+            }
           }
         }
-      }
 
-      const timestamp = (options?.preserveTimestamp && typeof progress.lastUpdated === 'number')
-        ? progress.lastUpdated
-        : Date.now();
+        const timestamp = (options?.preserveTimestamp && typeof progress.lastUpdated === 'number')
+          ? progress.lastUpdated
+          : Date.now();
 
-
-      try {
+        // Restore if previously removed
         const removedMap = await this.getContinueWatchingRemoved();
         const removeCandidates: Array<{ removeId: string; key: string }> = [];
 
@@ -318,29 +335,27 @@ class StorageService {
         for (const candidate of removeCandidates) {
           const removedAt = removedMap[candidate.key];
           if (removedAt != null && timestamp > removedAt) {
-            logger.log(`♻️ [StorageService] restoring content to continue watching due to new progress: ${candidate.key}`);
+            logger.log(`♻️ [StorageService] restoring content: ${candidate.key}`);
             await this.removeContinueWatchingRemoved(candidate.removeId, type);
           }
         }
-      } catch (e) {
-        // Ignore error checks for restoration to prevent blocking save
+
+        const updated = { ...progress, lastUpdated: timestamp };
+        await mmkvStorage.setItem(key, JSON.stringify(updated));
+
+        // Invalidate cache
+        this.invalidateWatchProgressCache();
+
+        // Notify subscribers
+        if (options?.forceNotify) {
+          this.notifyWatchProgressSubscribers();
+        } else {
+          this.debouncedNotifySubscribers();
+        }
+      } catch (error) {
+        logger.error('Error setting watch progress:', error);
       }
-
-      const updated = { ...progress, lastUpdated: timestamp };
-      await mmkvStorage.setItem(key, JSON.stringify(updated));
-
-      // Invalidate cache
-      this.invalidateWatchProgressCache();
-
-      // Notify subscribers; allow forcing immediate notification
-      if (options?.forceNotify) {
-        this.notifyWatchProgressSubscribers();
-      } else {
-        this.debouncedNotifySubscribers();
-      }
-    } catch (error) {
-      logger.error('Error setting watch progress:', error);
-    }
+    });
   }
 
   private debouncedNotifySubscribers(): void {
@@ -413,21 +428,23 @@ class StorageService {
     type: string,
     episodeId?: string
   ): Promise<void> {
-    try {
-      const key = await this.getWatchProgressKeyScoped(id, type, episodeId);
-      await mmkvStorage.removeItem(key);
-      await this.addWatchProgressTombstone(id, type, episodeId);
+    return this.withMutex(async () => {
+      try {
+        const key = await this.getWatchProgressKeyScoped(id, type, episodeId);
+        await mmkvStorage.removeItem(key);
+        await this.addWatchProgressTombstone(id, type, episodeId);
 
-      // Invalidate cache
-      this.invalidateWatchProgressCache();
+        // Invalidate cache
+        this.invalidateWatchProgressCache();
 
-      // Notify subscribers
-      this.notifyWatchProgressSubscribers();
-      // Emit explicit remove event for sync layer
-      try { this.watchProgressRemoveListeners.forEach(l => l(id, type, episodeId)); } catch { }
-    } catch (error) {
-      logger.error('Error removing watch progress:', error);
-    }
+        // Notify subscribers
+        this.notifyWatchProgressSubscribers();
+        // Emit explicit remove event for sync layer
+        try { this.watchProgressRemoveListeners.forEach(l => l(id, type, episodeId)); } catch { }
+      } catch (error) {
+        logger.error('Error removing watch progress:', error);
+      }
+    });
   }
 
   public async getAllWatchProgress(): Promise<Record<string, WatchProgress>> {
@@ -462,6 +479,29 @@ class StorageService {
     }
   }
 
+  public async getSeriesWatchProgress(seriesId: string): Promise<Record<string, WatchProgress>> {
+    try {
+      const scope = await this.getUserScope();
+      const prefix = `@user:${scope}:${this.WATCH_PROGRESS_KEY}`;
+      const seriesPrefix = `${prefix}series:${seriesId}:`;
+      const keys = await mmkvStorage.getAllKeys();
+      const seriesKeys = keys.filter(key => key.startsWith(seriesPrefix));
+      
+      if (seriesKeys.length === 0) return {};
+      
+      const pairs = await mmkvStorage.multiGet(seriesKeys);
+      return pairs.reduce((acc, [key, value]) => {
+        if (value) {
+          acc[key.replace(prefix, '')] = JSON.parse(value);
+        }
+        return acc;
+      }, {} as Record<string, WatchProgress>);
+    } catch (error) {
+      logger.error(`Error getting watch progress for series ${seriesId}:`, error);
+      return {};
+    }
+  }
+
   private invalidateWatchProgressCache(): void {
     this.watchProgressCache = null;
     this.watchProgressCacheTimestamp = 0;
@@ -481,28 +521,19 @@ class StorageService {
     try {
       const existingProgress = await this.getWatchProgress(id, type, episodeId);
       if (existingProgress) {
-        // Preserve the highest Trakt progress and currentTime values to avoid accidental regressions
-        const highestTraktProgress = (() => {
-          if (traktProgress === undefined) return existingProgress.traktProgress;
-          if (existingProgress.traktProgress === undefined) return traktProgress;
-          return Math.max(traktProgress, existingProgress.traktProgress);
-        })();
-
-        const highestCurrentTime = (() => {
-          if (!exactTime || exactTime <= 0) return existingProgress.currentTime;
-          return Math.max(exactTime, existingProgress.currentTime);
-        })();
+        // Trust incoming Trakt progress if it's explicitly 100% (watched) 
+        // OR if it's larger than local. We only use Math.max for partial progress 
+        // to avoid rollbacks, but we MUST allow 100% to overwrite to fix "unwatched" bugs.
+        const updatedTraktProgress = traktProgress === 100 ? 100 : Math.max(traktProgress ?? 0, existingProgress.traktProgress ?? 0);
+        const updatedCurrentTime = (traktProgress === 100) ? existingProgress.duration : Math.max(exactTime ?? 0, existingProgress.currentTime);
 
         const updatedProgress: WatchProgress = {
           ...existingProgress,
           traktSynced,
           traktLastSynced: traktSynced ? Date.now() : existingProgress.traktLastSynced,
-          traktProgress: highestTraktProgress,
-          currentTime: highestCurrentTime,
+          traktProgress: updatedTraktProgress,
+          currentTime: updatedCurrentTime,
         };
-        // preserveTimestamp: true prevents lastUpdated from being bumped to Date.now(),
-        // which would make getUnsyncedProgress() think the entry needs re-syncing and
-        // re-add already-watched movies/episodes back to Trakt history.
         await this.setWatchProgress(id, type, updatedProgress, episodeId, { preserveTimestamp: true });
       }
     } catch (error) {
@@ -574,33 +605,26 @@ class StorageService {
       }> = [];
 
       for (const [key, progress] of Object.entries(allProgress)) {
-        // Skip if tombstoned (either exact entry or base content) and tombstone is newer
         const parts = key.split(':');
-        const baseKey = `${parts[0]}:${parts[1]}`;
-        const exactTombAt = tombstones[key];
-        const baseTombAt = tombstones[baseKey];
-        const newestTombAt = Math.max(exactTombAt || 0, baseTombAt || 0);
+        if (parts.length < 2) continue;
+
+        const type = parts[0];
+        const id = parts[1];
+        const baseKey = `${type}:${id}`;
+        
+        // Skip if tombstoned
+        const newestTombAt = Math.max(tombstones[key] || 0, tombstones[baseKey] || 0);
         if (newestTombAt && (progress.lastUpdated == null || progress.lastUpdated <= newestTombAt)) {
           continue;
         }
-        // Check if needs sync (either never synced or local progress is newer)
+
+        // Check if needs sync
         const needsSync = (!progress.traktSynced || (progress.traktLastSynced && progress.lastUpdated > progress.traktLastSynced)) ||
           (!progress.simklSynced || (progress.simklLastSynced && progress.lastUpdated > progress.simklLastSynced));
 
         if (needsSync) {
-          const parts = key.split(':');
-          const type = parts[0];
-          const id = parts[1];
-          // Preserve full episodeId even if it contains additional ':' segments (e.g., "<showId>:<season>:<episode>")
           const episodeId = parts.length > 2 ? parts.slice(2).join(':') : undefined;
-
-          unsynced.push({
-            key,
-            id,
-            type,
-            episodeId,
-            progress
-          });
+          unsynced.push({ key, id, type, episodeId, progress });
         }
       }
 

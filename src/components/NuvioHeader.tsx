@@ -5,6 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { BlurView as ExpoBlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Optional iOS Glass effect (expo-glass-effect) with safe fallback for NuvioHeader
@@ -28,16 +29,21 @@ export const NuvioHeader = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute();
   const { currentTheme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Only render the header if the current route is 'Home'
   if (route.name !== 'Home') {
     return null;
   }
 
+  const headerHeight = Platform.OS === 'ios' ? Math.max(90, insets.top + 50) : 90;
+  const headerPaddingTop = Platform.OS === 'ios' ? insets.top : 35;
+
   return (
     <View style={styles.container}>
       <View style={[
         styles.headerContainer,
+        { height: headerHeight, paddingTop: headerPaddingTop },
         Platform.OS === 'android' && { backgroundColor: currentTheme.colors.darkBackground }
       ]}>
         {Platform.OS === 'ios' ? (
@@ -92,8 +98,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   headerContainer: {
-    height: Platform.OS === 'ios' ? 100 : 90,
-    paddingTop: Platform.OS === 'ios' ? 35 : 35,
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   blurOverlay: {

@@ -615,17 +615,23 @@ export class TMDBService {
 
       const allEpisodes: { [seasonNumber: number]: TMDBEpisode[] } = {};
 
-      // Get episodes for each season (in parallel)
-      const seasonPromises = showDetails.seasons
-        .filter(season => season.season_number > 0) // Filter out specials (season 0)
-        .map(async season => {
-          const seasonDetails = await this.getSeasonDetails(tmdbId, season.season_number, showDetails.name, language);
-          if (seasonDetails && seasonDetails.episodes) {
-            allEpisodes[season.season_number] = seasonDetails.episodes;
-          }
-        });
+      const seasonsToFetch = showDetails.seasons.filter(season => season.season_number > 0);
+      const batchSize = 5;
 
-      await Promise.all(seasonPromises);
+      for (let i = 0; i < seasonsToFetch.length; i += batchSize) {
+        const batch = seasonsToFetch.slice(i, i + batchSize);
+        await Promise.all(batch.map(async season => {
+          try {
+            const seasonDetails = await this.getSeasonDetails(tmdbId, season.season_number, showDetails.name, language);
+            if (seasonDetails && seasonDetails.episodes) {
+              allEpisodes[season.season_number] = seasonDetails.episodes;
+            }
+          } catch (error) {
+            logger.error(`[TMDBService] Failed to fetch episodes for S${season.season_number}:`, error);
+          }
+        }));
+      }
+
       return allEpisodes;
     } catch (error) {
       return {};

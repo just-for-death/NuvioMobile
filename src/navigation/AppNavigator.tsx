@@ -19,6 +19,7 @@ import { PostHogProvider, usePostHog } from 'posthog-react-native';
 import { ScrollToTopProvider, useScrollToTopEmitter } from '../contexts/ScrollToTopContext';
 import { telemetryService, TELEMETRY_EVENTS } from '../services/telemetryService';
 import { useTranslation } from 'react-i18next';
+import { useSettings } from '../hooks/useSettings';
 
 // Optional iOS Glass effect (expo-glass-effect) with safe fallback
 let GlassViewComp: any = null;
@@ -538,7 +539,7 @@ const TabScreenWrapper: React.FC<{ children: React.ReactNode }> = ({ children })
     }}>
       {/* Reserve consistent space for the header area on all screens */}
       <View style={{
-        height: isTablet ? (insets.top + 64) : (Platform.OS === 'android' ? 80 : 60),
+        height: isTablet ? (insets.top + 64) : (Platform.OS === 'android' ? 80 : Math.max(90, insets.top + 50)),
         width: '100%',
         backgroundColor: colors.darkBackground,
         position: 'absolute',
@@ -565,9 +566,7 @@ const WrappedScreen: React.FC<{ Screen: React.ComponentType<any> }> = ({ Screen 
 const MainTabs = () => {
   const { t } = useTranslation();
   const { currentTheme } = useTheme();
-  const { settings } = require('../hooks/useSettings');
-  const { useSettings: useSettingsHook } = require('../hooks/useSettings');
-  const { settings: appSettings } = useSettingsHook();
+  const { settings, isLoaded } = useSettings();
   const [hasUpdateBadge, setHasUpdateBadge] = React.useState(false);
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
   const lastTapRef = useRef<Record<string, number>>({});
@@ -772,7 +771,7 @@ const MainTabs = () => {
         bottom: 0,
         left: 0,
         right: 0,
-        height: Platform.OS === 'android' ? 70 : 85 + insets.bottom,
+        height: Platform.OS === 'android' ? 70 : 64 + insets.bottom,
         backgroundColor: 'transparent',
         overflow: 'hidden',
       }}>
@@ -822,7 +821,7 @@ const MainTabs = () => {
         <View
           style={{
             height: '100%',
-            paddingBottom: Platform.OS === 'android' ? 15 : 20 + insets.bottom,
+            paddingBottom: Platform.OS === 'android' ? 15 : insets.bottom,
             paddingTop: Platform.OS === 'android' ? 8 : 12,
             backgroundColor: 'transparent',
           }}
@@ -932,7 +931,7 @@ const MainTabs = () => {
     // Dynamically require to avoid impacting Android bundle
     const { createNativeBottomTabNavigator } = require('@bottom-tabs/react-navigation');
     const IOSTab = createNativeBottomTabNavigator();
-    const downloadsEnabled = appSettings?.enableDownloads !== false;
+    const downloadsEnabled = settings?.enableDownloads !== false;
 
     return (
       <View style={{ flex: 1, backgroundColor: currentTheme.colors.darkBackground }}>
@@ -1164,7 +1163,7 @@ const MainTabs = () => {
             },
           }}
         />
-        {appSettings?.enableDownloads !== false && (
+        {settings?.enableDownloads !== false && (
           <Tab.Screen
             name="Downloads"
             component={DownloadsScreen}

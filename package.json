@@ -1,6 +1,6 @@
 {
   "name": "nuvio",
-  "version": "0.6.0-beta.16",
+  "version": "1.4.4",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",

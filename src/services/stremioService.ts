@@ -266,9 +266,15 @@ class StremioService {
   private static instance: StremioService;
   private installedAddons: Map<string, Manifest> = new Map(); // Key is installationId
   private addonOrder: string[] = []; // Array of installationIds
+  private readonly ADDONS_KEY = '@stremio_addons';
+  private readonly RECENT_SEARCHES_KEY = '@recent_searches';
+  private readonly PROFILE_KEY = '@stremio_profile';
+  private readonly DEFAULT_TIMEOUT = 10000;
+  private readonly METADATA_TIMEOUT = 15000;
   private readonly STORAGE_KEY = 'stremio-addons';
   private readonly ADDON_ORDER_KEY = 'stremio-addon-order';
   private readonly MAX_CONCURRENT_REQUESTS = 3;
+  private readonly DEBRID_TIMEOUT = 60000;
   private readonly DEFAULT_PAGE_SIZE = 100; // Protocol standard page size
   private initialized: boolean = false;
   private initializationPromise: Promise<void> | null = null;
@@ -286,6 +292,33 @@ class StremioService {
     return `${addonId}-${timestamp}-${random}`;
   }
 
+  private extractTMDBIdFromStremioId(stremioId: string): string | null {
+    if (!stremioId) return null;
+
+    // Format: tmdb:movie:123 or tmdb:series:123
+    if (stremioId.startsWith('tmdb:')) {
+      const parts = stremioId.split(':');
+      return parts[parts.length - 1]; // Get the ID portion
+    }
+
+    // Format: kitsu:123 or mal:anime:123
+    if (stremioId.startsWith('kitsu:') || stremioId.startsWith('mal:')) {
+      const parts = stremioId.split(':');
+      return parts[parts.length - 1];
+    }
+
+    // IMDB IDs (tt...) - cannot extract TMDB ID directly from these without an API call
+    if (stremioId.startsWith('tt')) {
+      return null;
+    }
+
+    // Format: 123 (direct TMDB ID sometimes used in some catalogs)
+    if (/^\d+$/.test(stremioId)) {
+      return stremioId;
+    }
+
+    return null;
+  }
 
   private addonProvidesStreams(manifest: Manifest): boolean {
     if (!manifest.resources || !Array.isArray(manifest.resources)) {
@@ -679,7 +712,7 @@ class StremioService {
         : `${url.replace(/\/$/, '')}/manifest.json`;
 
       const response = await this.retryRequest(async () => {
-        return await axios.get(manifestUrl, safeAxiosConfig);
+        return await axios.get(manifestUrl, createSafeAxiosConfig(10000));
       });
 
       const manifest = response.data;
@@ -996,6 +1029,7 @@ class StremioService {
       throw error;
     }
   }
+
 
   public getCatalogHasMore(manifestId: string, type: string, id: string): boolean | undefined {
     const key = `${manifestId}|${type}|${id}`;
@@ -1626,7 +1660,7 @@ class StremioService {
 
     try {
       // Increase timeout for debrid services
-      const timeout = addon.id.toLowerCase().includes('torrentio') ? 60000 : 10000;
+      const timeout = addon.id.toLowerCase().includes('torrentio') ? this.DEBRID_TIMEOUT : this.DEFAULT_TIMEOUT;
 
       const response = await this.retryRequest(async () => {
         logger.log(`🌐 [fetchStreamsFromAddon] Requesting ${url} (timeout=${timeout}ms)`);

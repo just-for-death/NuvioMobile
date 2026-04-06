@@ -1,20 +1,48 @@
 pluginManagement {
-  def reactNativeGradlePlugin = new File(
-    providers.exec {
-      workingDir(rootDir)
-      commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
-    }.standardOutput.asText.get().trim()
-  ).getParentFile().absolutePath
-  includeBuild(reactNativeGradlePlugin)
-  
-  def expoPluginsPath = new File(
-    providers.exec {
-      workingDir(rootDir)
-      commandLine("node", "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
-    }.standardOutput.asText.get().trim(),
-    "../android/expo-gradle-plugin"
-  ).absolutePath
-  includeBuild(expoPluginsPath)
+  def getPackagePath = { packageName ->
+    try {
+      def searchPath = rootDir.parentFile.absolutePath
+      def execResult = providers.exec {
+        workingDir(rootDir)
+        commandLine("node", "--print", "require.resolve('${packageName}/package.json', { paths: ['${searchPath}'] })")
+        ignoreExitValue = true
+      }
+      
+      def output = execResult.standardOutput.asText.get().trim()
+      if (output.isEmpty()) {
+        System.err.println "Warning: Failed to resolve package path for ${packageName} (node returned empty or error)"
+        return null
+      }
+      
+      def pkgDir = new File(output).getParentFile().absolutePath
+      println "Resolved ${packageName} to ${pkgDir}"
+      return pkgDir
+    } catch (Exception e) {
+      System.err.println "Warning: Exception during resolution of ${packageName}: ${e.message}"
+      return null
+    }
+  }
+
+  def reactNativeGradlePlugin = getPackagePath('@react-native/gradle-plugin')
+  if (reactNativeGradlePlugin != null) {
+    includeBuild(reactNativeGradlePlugin)
+  }
+
+  def expoAutolinkingPath = getPackagePath('expo-modules-autolinking')
+  if (expoAutolinkingPath != null) {
+    def fullPath = new File(expoAutolinkingPath, "android/expo-gradle-plugin").absolutePath
+    if (new File(fullPath).exists()) {
+       includeBuild(fullPath)
+    }
+  }
+
+  def expoModulesCorePath = getPackagePath('expo-modules-core')
+  if (expoModulesCorePath != null) {
+    def fullPath = new File(expoModulesCorePath, "expo-module-gradle-plugin").absolutePath
+    if (new File(fullPath).exists()) {
+       includeBuild(fullPath)
+    }
+  }
 }
 
 plugins {
@@ -22,18 +50,36 @@ plugins {
   id("expo-autolinking-settings")
 }
 
-extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
-  if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
-    ex.autolinkLibrariesFromCommand()
-  } else {
-    ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+try {
+  extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+    if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
+      ex.autolinkLibrariesFromCommand()
+    } else {
+      ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+    }
   }
+} catch (Exception e) {
+  System.err.println "Warning: Failed to configure React settings: ${e.message}"
 }
-expoAutolinking.useExpoModules()
+
+try {
+  expoAutolinking.useExpoModules()
+} catch (Exception e) {
+  System.err.println "Warning: Failed to initialize Expo modules: ${e.message}"
+}
 
 rootProject.name = 'Nuvio'
 
-expoAutolinking.useExpoVersionCatalog()
+try {
+  expoAutolinking.useExpoVersionCatalog()
+} catch (Exception e) {
+  System.err.println "Warning: Failed to initialize Expo Version Catalog: ${e.message}"
+}
 
 include ':app'
-includeBuild(expoAutolinking.reactNativeGradlePlugin)
+
+try {
+  includeBuild(expoAutolinking.reactNativeGradlePlugin)
+} catch (Exception e) {
+  System.err.println "Warning: Failed to include React Native Gradle Plugin: ${e.message}"
+}

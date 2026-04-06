@@ -56,8 +56,9 @@ class NotificationService {
   private appStateSubscription: any = null;
   private lastSyncTime: number = 0;
   private readonly MIN_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes minimum between syncs
-  // Download notification tracking - stores progress value (50) when notified
-  private lastDownloadNotificationTime: Map<string, number> = new Map();
+  // Download notification tracking - stores { progress: number, timestamp: number }
+  private lastDownloadNotificationTime: Map<string, { progress: number, timestamp: number }> = new Map();
+  private readonly DOWNLOAD_NOTIFICATION_TTL = 2 * 60 * 60 * 1000; // 2 hours
 
   private constructor() {
     // Initialize notifications
@@ -91,13 +92,18 @@ class NotificationService {
     // Request permissions if needed
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
 
+    // Reconciliation: If system permissions are revoked, update internal settings
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
-        // Handle permission denied
+      if (this.settings.enabled) {
+        logger.warn('[NotificationService] System permissions revoked, disabling internal settings');
         this.settings.enabled = false;
         await this.saveSettings();
       }
+    } else if (!this.settings.enabled && existingStatus === 'granted') {
+      // If user granted permissions in settings but app still thinks it's disabled, 
+      // we could re-enable it, but better to keep it false unless it was a first-run scenario.
+      // For now, let's just log it.
+      logger.info('[NotificationService] System permissions granted but app settings are disabled');
     }
   }
 
@@ -336,13 +342,16 @@ class NotificationService {
       }
 
       // Check if we've already notified at 50% for this download
-      const lastNotifiedProgress = this.lastDownloadNotificationTime.get(title) || 0;
-      if (lastNotifiedProgress >= 50) {
+      const lastNotified = this.lastDownloadNotificationTime.get(title);
+      if (lastNotified && lastNotified.progress >= 50) {
         return; // Already notified at 50%, don't notify again
       }
 
+      // Perform TTL cleanup of stale entries occasionally
+      this.cleanupStaleDownloadTracking();
+
       // Mark that we've notified at 50%
-      this.lastDownloadNotificationTime.set(title, 50);
+      this.lastDownloadNotificationTime.set(title, { progress: 50, timestamp: Date.now() });
 
       const downloadedMb = Math.floor((downloadedBytes || 0) / (1024 * 1024));
       const totalMb = totalBytes ? Math.floor(totalBytes / (1024 * 1024)) : undefined;
@@ -408,8 +417,8 @@ class NotificationService {
         800 // Longer delay to prevent API overwhelming and reduce heating
       );
 
-      // Force cleanup after processing
-      memoryManager.forceGarbageCollection();
+      // Yield to event loop to allow engine cleanup
+      await new Promise(resolve => setImmediate(resolve));
 
       // Reduced logging verbosity
       // logger.log(`[NotificationService] Synced notifications for ${limitedSeries.length} series from library`);
@@ -716,8 +725,8 @@ class NotificationService {
     } catch (error) {
       logger.error(`[NotificationService] Error updating notifications for series ${seriesId}:`, error);
     } finally {
-      // Force cleanup after each series to prevent accumulation
-      memoryManager.forceGarbageCollection();
+      // Yield to event loop to allow engine cleanup
+      await new Promise(resolve => setImmediate(resolve));
     }
   }
 
@@ -789,6 +798,24 @@ class NotificationService {
       this.appStateSubscription.remove();
       this.appStateSubscription = null;
     }
+  }
+
+  private cleanupStaleDownloadTracking(): void {
+    const now = Date.now();
+    for (const [title, data] of this.lastDownloadNotificationTime.entries()) {
+      if (now - data.timestamp > this.DOWNLOAD_NOTIFICATION_TTL) {
+        this.lastDownloadNotificationTime.delete(title);
+      }
+    }
+  }
+
+  /**
+   * Generates a unique, standardized notification ID to prevent duplicates
+   */
+  private generateNotificationId(item: Partial<NotificationItem>): string {
+    if (item.id) return item.id;
+    // Fallback: stable hash of series/season/episode metadata
+    return `show-${item.seriesId || 'unknown'}-s${item.season || 0}e${item.episode || 0}`;
   }
 }
 

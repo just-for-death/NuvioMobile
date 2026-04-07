@@ -28,6 +28,9 @@ workflows:
       - name: Install dependencies
         script: |
           npm install --legacy-peer-deps
+      - name: Clone KSPlayer dependency
+        script: |
+          cd .. && git clone https://github.com/kingslay/KSPlayer.git
       - name: Install CocoaPods
         script: |
           cd ios && pod install
@@ -51,6 +54,9 @@ workflows:
     scripts:
       - name: Install dependencies
         script: npm install --legacy-peer-deps
+      - name: Clone KSPlayer dependency
+        script: |
+          cd .. && git clone https://github.com/kingslay/KSPlayer.git
       - name: Install CocoaPods
         script: cd ios && pod install
       - name: Build Archive (Unsigned)

@@ -43,6 +43,8 @@ workflows:
         script: |
           set -e
           cd ios
+          pod deintegrate
+          rm -rf Pods Podfile.lock
           # Hard clean for CocoaPods to resolve ScanDependencies issues
           pod deintegrate
           pod cache clean --all

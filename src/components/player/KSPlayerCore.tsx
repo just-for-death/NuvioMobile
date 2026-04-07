@@ -476,7 +476,7 @@ const KSPlayerCore: React.FC = () => {
     if (imdbId) {
       fetchAvailableSubtitles(undefined, true);
     }
-  }, [imdbId]);
+  }, [imdbId, episodeId, season, episode]);
 
   // Auto-select subtitles when both internal tracks and video are loaded
   // This ensures we wait for internal tracks before falling back to external
@@ -759,7 +759,7 @@ const KSPlayerCore: React.FC = () => {
         headers: stream.headers || undefined,
         id,
         type: 'series',
-        episodeId: ep.stremioId || `${id}:${ep.season_number}:${ep.episode_number} `,
+        episodeId: ep.stremioId || `${id}:${ep.season_number}:${ep.episode_number}`,
         imdbId: imdbId ?? undefined,
         backdrop: backdrop || undefined,
       });

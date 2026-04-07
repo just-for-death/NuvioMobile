@@ -15,16 +15,16 @@ workflows:
         - node_modules
         - ios/Pods
         - ~/Library/Caches/CocoaPods
-        - ../KSPlayer
+        - KSPlayer
     scripts:
       - name: Install dependencies
         script: npm install --legacy-peer-deps
       - name: Clone KSPlayer dependency
         script: |
           set -e
-          if [ ! -d "../KSPlayer" ]; then
+          if [ ! -d "KSPlayer" ]; then
             echo "KSPlayer not found in cache. Cloning..."
-            cd .. && git clone --depth 1 https://github.com/kingslay/KSPlayer.git
+            git clone --depth 1 https://github.com/kingslay/KSPlayer.git
           else
             echo "KSPlayer found in cache. Skipping clone."
           fi

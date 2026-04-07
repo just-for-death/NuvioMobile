@@ -43,12 +43,14 @@ workflows:
         script: |
           set -e
           cd ios
-          pod install
+          pod install --repo-update
           # Ensure all CocoaPods generated scripts are executable to avoid PhaseScriptExecution errors
           find Pods -name "*.sh" -exec chmod +x {} +
       - name: Build Archive (Unsigned)
         script: |
           set -e
+          # Clear Derived Data to avoid stale dependency scanning (important for Sentry/Xcode 16)
+          rm -rf ~/Library/Developer/Xcode/DerivedData
           xcodebuild archive \
             -workspace "$XCODE_WORKSPACE" \
             -scheme "$XCODE_SCHEME" \

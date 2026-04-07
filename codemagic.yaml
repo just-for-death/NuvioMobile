@@ -22,12 +22,16 @@ workflows:
       - name: Install Metal Toolchain
         script: |
           set -e
-          echo "⬇️ Downloading Metal Toolchain (Required for Xcode 26+ Metal compilation)"
-          # We use /tmp to export and then import the component
-          mkdir -p /tmp/metal_toolchain
-          xcodebuild -downloadComponent MetalToolchain -exportPath /tmp/metal_toolchain
-          xcodebuild -importComponent MetalToolchain -importPath /tmp/metal_toolchain/*.exportedBundle
-          echo "✓ Metal Toolchain installation completed"
+          echo "🔍 Checking for Metal Toolchain..."
+          # If showComponent fails, then we download and import
+          if ! xcodebuild -showComponent MetalToolchain > /dev/null 2>&1; then
+            echo "⬇️ Downloading Metal Toolchain..."
+            mkdir -p /tmp/metal_toolchain
+            xcodebuild -downloadComponent MetalToolchain -exportPath /tmp/metal_toolchain
+            xcodebuild -importComponent MetalToolchain -importPath /tmp/metal_toolchain/*.exportedBundle || echo "⚠️ Import returned error (might already be installed)"
+          else
+            echo "✓ Metal Toolchain is already installed"
+          fi
       - name: Clone KSPlayer dependency
         script: |
           set -e

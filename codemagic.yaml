@@ -5,8 +5,8 @@ workflows:
     max_build_duration: 60
     environment:
       node: v20.12.2
-      xcode: latest
-      cocoapods: default
+      xcode: 16.1
+      cocoapods: 1.16.2
       vars:
         XCODE_WORKSPACE: "ios/Nuvio.xcworkspace"
         XCODE_SCHEME: "Nuvio"
@@ -19,19 +19,7 @@ workflows:
     scripts:
       - name: Install dependencies
         script: npm install --legacy-peer-deps
-      - name: Install Metal Toolchain
-        script: |
-          set -e
-          echo "🔍 Checking for Metal Toolchain..."
-          # If showComponent fails, then we download and import
-          if ! xcodebuild -showComponent MetalToolchain > /dev/null 2>&1; then
-            echo "⬇️ Downloading Metal Toolchain..."
-            mkdir -p /tmp/metal_toolchain
-            xcodebuild -downloadComponent MetalToolchain -exportPath /tmp/metal_toolchain
-            xcodebuild -importComponent MetalToolchain -importPath /tmp/metal_toolchain/*.exportedBundle || echo "⚠️ Import returned error (might already be installed)"
-          else
-            echo "✓ Metal Toolchain is already installed"
-          fi
+
       - name: Clone KSPlayer dependency
         script: |
           set -e

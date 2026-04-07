@@ -10,7 +10,7 @@ workflows:
       vars:
         XCODE_WORKSPACE: "ios/Nuvio.xcworkspace"
         XCODE_SCHEME: "Nuvio"
-    caching:
+    cache:
       cache_paths:
         - node_modules
         - ios/Pods

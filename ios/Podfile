@@ -63,5 +63,14 @@ target 'Nuvio' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # Patch for Sentry to resolve ScanDependencies error on Xcode 16
+    installer.pods_project.targets.each do |target|
+      if target.name == 'Sentry'
+        target.build_configurations.each do |config|
+          config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'YES'
+        end
+      end
+    end
   end
 end

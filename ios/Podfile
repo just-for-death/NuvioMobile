@@ -64,11 +64,16 @@ target 'Nuvio' do
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
 
-    # Patch for Sentry to resolve ScanDependencies error on Xcode 16
+    # Patch for Sentry and Swift 5.0 compatibility on Xcode 16
     installer.pods_project.targets.each do |target|
-      if target.name == 'Sentry'
-        target.build_configurations.each do |config|
+      target.build_configurations.each do |config|
+        # Ensure all pods use Swift 5.0 for consistent ABI in Xcode 16
+        config.build_settings['SWIFT_VERSION'] = '5.0'
+        
+        if target.name == 'Sentry'
           config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'YES'
+          # Required to resolve ScanDependencies/SwiftCompile errors on newer Xcode
+          config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
         end
       end
     end

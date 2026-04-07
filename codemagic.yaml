@@ -61,7 +61,7 @@ workflows:
             -sdk iphoneos \
             -configuration Release \
             -archivePath "$CM_BUILD_DIR/build.xcarchive" \
-            -verbose \
+            -quiet \
             ENABLE_USER_SCRIPT_SANDBOX=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \

@@ -26,10 +26,18 @@ workflows:
           rm -rf KSPlayer
           echo "Cloning KSPlayer dependency into project root..."
           git clone --depth 1 https://github.com/kingslay/KSPlayer.git KSPlayer
-          # Debug: List the contents of the root folder to confirm podspecs exist
-          echo "--- Contents of KSPlayer directory ---"
-          ls -la KSPlayer/*.podspec
-          echo "--- Completed Clone ---"
+          
+          # Fix for CocoaPods: Multiple podspecs in one directory can cause resolution errors.
+          # We move DisplayCriteria into its own subfolder to ensure :path => 'path/to/dir' works correctly.
+          echo "Preparing DisplayCriteria subfolder..."
+          mkdir -p KSPlayer/DisplayCriteria
+          cp KSPlayer/DisplayCriteria.podspec KSPlayer/DisplayCriteria/
+          
+          # Debug: List the contents to confirm podspecs exist in their new locations
+          echo "--- Verifying Podspec Locations ---"
+          ls -la KSPlayer/KSPlayer.podspec
+          ls -la KSPlayer/DisplayCriteria/DisplayCriteria.podspec
+          echo "--- Completed Preparation ---"
       - name: Install CocoaPods
         script: |
           set -e

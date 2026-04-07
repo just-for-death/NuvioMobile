@@ -51,8 +51,8 @@ target 'Nuvio' do
 
   # KSPlayer dependencies
   # Use the local checkout so we can patch subtitle rendering (and other behaviors) without forking.
-  pod 'KSPlayer', :podspec => '../KSPlayer/KSPlayer.podspec'
-  pod 'DisplayCriteria', :podspec => '../KSPlayer/DisplayCriteria.podspec', :modular_headers => true
+  pod 'KSPlayer', :path => '../KSPlayer'
+  pod 'DisplayCriteria', :path => '../KSPlayer/DisplayCriteria', :modular_headers => true
   pod 'FFmpegKit', :git => 'https://github.com/kingslay/FFmpegKit.git', :branch => 'main', :modular_headers => true
   pod 'Libass', :git => 'https://github.com/kingslay/FFmpegKit.git', :branch => 'main'
 

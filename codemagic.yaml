@@ -43,7 +43,8 @@ workflows:
         script: |
           set -e
           cd ios
-          pod install --repo-update
+          # Resolve version mismatch between Podfile.lock and the upgraded Sentry SDK
+          pod update Sentry --no-repo-update || pod install --repo-update
           # Ensure all CocoaPods generated scripts are executable to avoid PhaseScriptExecution errors
           find Pods -name "*.sh" -exec chmod +x {} +
       - name: Build Archive (Unsigned)

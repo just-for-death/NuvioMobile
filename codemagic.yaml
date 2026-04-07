@@ -55,9 +55,9 @@ workflows:
         script: |
           set -e
           cd ios
+          pod install
           # Ensure all CocoaPods generated scripts are executable to avoid PhaseScriptExecution errors
           find Pods -name "*.sh" -exec chmod +x {} +
-          pod install
       - name: Build Archive (Unsigned)
         script: |
           set -e

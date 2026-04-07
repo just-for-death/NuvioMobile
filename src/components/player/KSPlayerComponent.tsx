@@ -1,3 +1,4 @@
+import { logger } from "../../utils/logger";
 import React, { useRef, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
 import { View, requireNativeComponent, UIManager, findNodeHandle, NativeModules } from 'react-native';
 
@@ -126,16 +127,16 @@ const KSPlayer = forwardRef<KSPlayerRef, KSPlayerProps>((props, ref) => {
       }
     },
     setTextTrack: (trackId: number) => {
-      console.log('[KSPlayerComponent] setTextTrack called with trackId:', trackId);
+      logger.log('[KSPlayerComponent] setTextTrack called with trackId:', trackId);
       if (nativeRef.current) {
         const node = findNodeHandle(nativeRef.current);
-        console.log('[KSPlayerComponent] setTextTrack dispatching command to node:', node);
+        logger.log('[KSPlayerComponent] setTextTrack dispatching command to node:', node);
         // @ts-ignore legacy UIManager commands path for Paper
         const commandId = UIManager.getViewManagerConfig('KSPlayerView').Commands.setTextTrack;
-        console.log('[KSPlayerComponent] setTextTrack commandId:', commandId);
+        logger.log('[KSPlayerComponent] setTextTrack commandId:', commandId);
         UIManager.dispatchViewManagerCommand(node, commandId, [trackId]);
       } else {
-        console.warn('[KSPlayerComponent] setTextTrack: nativeRef.current is null');
+        logger.warn('[KSPlayerComponent] setTextTrack: nativeRef.current is null');
       }
     },
     getTracks: async () => {
@@ -176,13 +177,13 @@ const KSPlayer = forwardRef<KSPlayerRef, KSPlayerProps>((props, ref) => {
       if (nativeRef.current) {
         const node = findNodeHandle(nativeRef.current);
         if (node) {
-          console.log('[KSPlayerComponent] Calling showAirPlayPicker with node:', node);
+          logger.log('[KSPlayerComponent] Calling showAirPlayPicker with node:', node);
           KSPlayerModule.showAirPlayPicker(node);
         } else {
-          console.warn('[KSPlayerComponent] Cannot call showAirPlayPicker: node is null');
+          logger.warn('[KSPlayerComponent] Cannot call showAirPlayPicker: node is null');
         }
       } else {
-        console.log('[KSPlayerComponent] nativeRef.current is null');
+        logger.log('[KSPlayerComponent] nativeRef.current is null');
       }
     },
   }));

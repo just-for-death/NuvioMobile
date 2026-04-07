@@ -73,11 +73,11 @@ export const MalSync = {
         try {
             const tmdbResult = await ArmSyncService.resolveByTmdb(tmdbId, releaseDate, dayIndex);
             if (tmdbResult && tmdbResult.malId) {
-                console.log(`[MalSync] Found TMDB match: ${tmdbId} (${releaseDate}) -> MAL ${tmdbResult.malId}`);
+                logger.log(`[MalSync] Found TMDB match: ${tmdbId} (${releaseDate}) -> MAL ${tmdbResult.malId}`);
                 return tmdbResult.malId;
             }
         } catch (e) {
-            console.warn('[MalSync] TMDB Sync failed:', e);
+            logger.warn('[MalSync] TMDB Sync failed:', e);
         }
     }
 
@@ -86,7 +86,7 @@ export const MalSync = {
         try {
             const armResult = await ArmSyncService.resolveByDate(imdbId, releaseDate, dayIndex);
             if (armResult && armResult.malId) {
-                console.log(`[MalSync] Found ARM match: ${imdbId} (${releaseDate}) -> MAL ${armResult.malId} Ep ${armResult.episode}`);
+                logger.log(`[MalSync] Found ARM match: ${imdbId} (${releaseDate}) -> MAL ${armResult.malId} Ep ${armResult.episode}`);
                 // Note: ArmSyncService returns the *absolute* episode number for MAL (e.g. 76)
                 // but our 'episode' arg is usually relative (e.g. 1). 
                 // scrobbleEpisode uses the malId returned here, and potentially the episode number from ArmSync
@@ -96,7 +96,7 @@ export const MalSync = {
                 return armResult.malId;
             }
         } catch (e) {
-            console.warn('[MalSync] ARM Sync failed:', e);
+            logger.warn('[MalSync] ARM Sync failed:', e);
         }
     }
 
@@ -165,7 +165,7 @@ export const MalSync = {
         return bestMatch.id;
       }
     } catch (e) {
-      console.warn('MAL Search failed for', title);
+      logger.warn('MAL Search failed for', title);
     }
     return null;
   },
@@ -203,7 +203,7 @@ export const MalSync = {
           if (tmdbResult) {
               malId = tmdbResult.malId;
               finalEpisodeNumber = tmdbResult.episode;
-              console.log(`[MalSync] TMDB Resolved: ${animeTitle} -> MAL ${malId} Ep ${finalEpisodeNumber}`);
+              logger.log(`[MalSync] TMDB Resolved: ${animeTitle} -> MAL ${malId} Ep ${finalEpisodeNumber}`);
           }
       }
 
@@ -213,7 +213,7 @@ export const MalSync = {
           if (armResult) {
               malId = armResult.malId;
               finalEpisodeNumber = armResult.episode;
-              console.log(`[MalSync] ARM Resolved: ${animeTitle} -> MAL ${malId} Ep ${finalEpisodeNumber}`);
+              logger.log(`[MalSync] ARM Resolved: ${animeTitle} -> MAL ${malId} Ep ${finalEpisodeNumber}`);
           }
       }
 
@@ -234,21 +234,21 @@ export const MalSync = {
         if (!currentStatus) {
             const autoAdd = mmkvStorage.getBoolean('mal_auto_add') ?? true;
             if (!autoAdd) {
-                console.log(`[MalSync] Skipping scrobble for ${animeTitle}: Not in list and auto-add disabled`);
+                logger.log(`[MalSync] Skipping scrobble for ${animeTitle}: Not in list and auto-add disabled`);
                 return;
             }
         }
 
         // If already completed or dropped, don't auto-update via scrobble
         if (currentStatus === 'completed' || currentStatus === 'dropped') {
-            console.log(`[MalSync] Skipping update for ${animeTitle}: Status is ${currentStatus}`);
+            logger.log(`[MalSync] Skipping update for ${animeTitle}: Status is ${currentStatus}`);
             return;
         }
 
         // If we are just starting (ep 1) or resuming (plan_to_watch/on_hold/null), set to watching
         // Also ensure we don't downgrade episode count (though unlikely with scrobbling forward)
         if (finalEpisodeNumber <= currentEpisodesWatched) {
-             console.log(`[MalSync] Skipping update for ${animeTitle}: Episode ${finalEpisodeNumber} <= Current ${currentEpisodesWatched}`);
+             logger.log(`[MalSync] Skipping update for ${animeTitle}: Episode ${finalEpisodeNumber} <= Current ${currentEpisodesWatched}`);
              return;
         }
       } catch (e) {
@@ -276,9 +276,9 @@ export const MalSync = {
       }
 
       await MalApiService.updateStatus(malId, status, finalEpisodeNumber);
-      console.log(`[MalSync] Synced ${animeTitle} Ep ${finalEpisodeNumber}/${finalTotalEpisodes || '?'} -> MAL ID ${malId} (${status})`);
+      logger.log(`[MalSync] Synced ${animeTitle} Ep ${finalEpisodeNumber}/${finalTotalEpisodes || '?'} -> MAL ID ${malId} (${status})`);
     } catch (e) {
-      console.error('[MalSync] Scrobble failed:', e);
+      logger.error('[MalSync] Scrobble failed:', e);
     }
   },
 
@@ -301,7 +301,7 @@ export const MalSync = {
           if (!currentStatus) {
               const autoAdd = mmkvStorage.getBoolean('mal_auto_add') ?? true;
               if (!autoAdd) {
-                  console.log(`[MalSync] Skipping direct scrobble: Not in list and auto-add disabled`);
+                  logger.log(`[MalSync] Skipping direct scrobble: Not in list and auto-add disabled`);
                   return;
               }
           }
@@ -317,9 +317,9 @@ export const MalSync = {
           }
 
           await MalApiService.updateStatus(malId, status, episodeNumber);
-          console.log(`[MalSync] Direct synced MAL ID ${malId} Ep ${episodeNumber} (${status})`);
+          logger.log(`[MalSync] Direct synced MAL ID ${malId} Ep ${episodeNumber} (${status})`);
       } catch (e) {
-          console.error('[MalSync] Direct scrobble failed:', e);
+          logger.error('[MalSync] Direct scrobble failed:', e);
       }
   },
 
@@ -351,7 +351,7 @@ export const MalSync = {
               // Keep legacy key for backwards compatibility with old cache readers.
               mmkvStorage.setNumber(getLegacyTitleCacheKey(title, type), item.node.id);
           }
-          console.log(`[MalSync] Synced ${allItems.length} items to mapping cache.`);
+          logger.log(`[MalSync] Synced ${allItems.length} items to mapping cache.`);
           
           // If auto-sync to library is enabled, also add 'watching' items to Nuvio Library
           if (mmkvStorage.getBoolean('mal_auto_sync_to_library') ?? false) {
@@ -360,7 +360,7 @@ export const MalSync = {
           
           return true;
       } catch (e) {
-          console.error('syncMalToLibrary failed', e);
+          logger.error('syncMalToLibrary failed', e);
           return false;
       }
   },
@@ -448,7 +448,7 @@ export const MalSync = {
           mmkvStorage.setString(cacheKey, JSON.stringify(result));
           return result;
       } catch (e) {
-          console.error('[MalSync] Failed to fetch external IDs:', e);
+          logger.error('[MalSync] Failed to fetch external IDs:', e);
       }
       return { imdbId: null, season: 1 };
   },
@@ -554,7 +554,7 @@ export const MalSync = {
           
           return result;
       } catch (e) {
-          console.error('[MalSync] Failed to fetch schedule:', e);
+          logger.error('[MalSync] Failed to fetch schedule:', e);
           return [];
       }
   }

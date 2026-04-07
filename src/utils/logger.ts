@@ -1,3 +1,4 @@
+
 class Logger {
   private isEnabled: boolean;
 

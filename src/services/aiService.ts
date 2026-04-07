@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import { mmkvStorage } from './mmkvStorage';
 
 export interface ChatMessage {
@@ -153,7 +154,7 @@ class AIService {
       this.apiKey = await mmkvStorage.getItem('openrouter_api_key');
       return !!this.apiKey;
     } catch (error) {
-      if (__DEV__) console.error('Failed to initialize AI service:', error);
+      if (__DEV__) logger.error('Failed to initialize AI service:', error);
       return false;
     }
   }
@@ -377,7 +378,7 @@ Answer questions about this movie using only the verified database information a
       ];
 
       if (__DEV__) {
-        console.log('[AIService] Sending request to OpenRouter with context:', {
+        logger.log('[AIService] Sending request to OpenRouter with context:', {
           contentType: 'showTitle' in context ? 'episode' : 'movie',
           title: 'showTitle' in context ?
             `${(context as EpisodeContext).showTitle} S${(context as EpisodeContext).seasonNumber}E${(context as EpisodeContext).episodeNumber}` :
@@ -387,7 +388,7 @@ Answer questions about this movie using only the verified database information a
       }
 
       const model = (await this.getPreferredModels())[0];
-      if (__DEV__) console.log('[AIService] Using model:', model);
+      if (__DEV__) logger.log('[AIService] Using model:', model);
 
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -412,7 +413,7 @@ Answer questions about this movie using only the verified database information a
         const parsedError = await this.parseErrorResponse(response);
 
         if (__DEV__) {
-          console.error('[AIService] API Error:', {
+          logger.error('[AIService] API Error:', {
             model,
             status: parsedError.statusLine,
             message: parsedError.message || parsedError.raw,
@@ -431,12 +432,12 @@ Answer questions about this movie using only the verified database information a
       const responseContent = data.choices[0].message.content;
 
       if (__DEV__ && data.usage) {
-        console.log('[AIService] Token usage:', data.usage);
+        logger.log('[AIService] Token usage:', data.usage);
       }
 
       return responseContent;
     } catch (error) {
-      if (__DEV__) console.error('[AIService] Error sending message:', error);
+      if (__DEV__) logger.error('[AIService] Error sending message:', error);
       throw error;
     }
   }
@@ -444,7 +445,7 @@ Answer questions about this movie using only the verified database information a
   // Helper method to create context from TMDB movie data
   static createMovieContext(movieData: any): MovieContext {
     if (__DEV__) {
-      console.log('[AIService] Creating movie context from TMDB data:', {
+      logger.log('[AIService] Creating movie context from TMDB data:', {
         id: movieData.id,
         title: movieData.title || movieData.name,
         hasCredits: !!movieData.credits,
@@ -485,7 +486,7 @@ Answer questions about this movie using only the verified database information a
     }
 
     if (__DEV__) {
-      console.log('[AIService] Movie release resolution:', {
+      logger.log('[AIService] Movie release resolution:', {
         resolvedReleaseDate: releaseDate,
         statusText: (movieData.status || '').toString(),
         computedReleased: released,
@@ -561,7 +562,7 @@ Answer questions about this movie using only the verified database information a
       }
     }
     if (__DEV__) {
-      console.log('[AIService] Creating episode context from TMDB data:', {
+      logger.log('[AIService] Creating episode context from TMDB data:', {
         showId: showData.id,
         showTitle: showData.name || showData.title,
         episodeId: episodeData.id,

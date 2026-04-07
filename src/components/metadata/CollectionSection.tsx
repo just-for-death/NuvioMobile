@@ -1,3 +1,4 @@
+import { logger } from "../../utils/logger";
 import React from 'react';
 import {
   View,
@@ -110,7 +111,7 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
         throw new Error('Could not find Stremio ID');
       }
     } catch (error) {
-      if (__DEV__) console.error('Error navigating to collection item:', error);
+      if (__DEV__) logger.error('Error navigating to collection item:', error);
       setAlertTitle(t('common.error'));
       setAlertMessage(t('metadata.something_went_wrong'));
       setAlertActions([{ label: t('common.ok'), onPress: () => {} }]);

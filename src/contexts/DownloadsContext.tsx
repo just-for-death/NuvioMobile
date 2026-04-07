@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -179,7 +180,7 @@ async function getDownloadFilename(url: string, headers?: Record<string, string>
     const urlName = getFilenameFromUrl(url);
     if (urlName) return sanitizeFilename(urlName);
   } catch (error) {
-    console.warn('[DownloadsContext] Could not resolve filename from HEAD request', error);
+    logger.warn('[DownloadsContext] Could not resolve filename from HEAD request', error);
   }
 
   return null;
@@ -553,7 +554,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const current = downloadsRef.current.find(x => x.id === taskId);
         stopLiveActivityForDownload(taskId, { title: current?.title, subtitle: 'Error', progressPercent: current?.progress });
 
-        console.log(`[DownloadsContext] Background download error: ${taskId}`, error);
+        logger.log(`[DownloadsContext] Background download error: ${taskId}`, error);
       });
   }, [maybeNotifyProgress, maybeUpdateLiveActivity, notifyCompleted, stopLiveActivityForDownload, updateDownload]);
 
@@ -605,7 +606,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
         }
       } catch (e) {
-        console.log('[DownloadsContext] Failed to re-attach background downloads', e);
+        logger.log('[DownloadsContext] Failed to re-attach background downloads', e);
       }
     })();
   }, [attachDownloadTask]);
@@ -713,7 +714,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // If app is backgrounded, kick Live Activity updates.
       maybeUpdateLiveActivity({ ...item, status: 'downloading' });
     } catch (e) {
-      console.log(`[DownloadsContext] Resume failed: ${id}`, e);
+      logger.log(`[DownloadsContext] Resume failed: ${id}`, e);
       updateDownload(id, (d) => ({ ...d, status: 'error', updatedAt: Date.now() }));
     }
   }, [attachDownloadTask, maybeUpdateLiveActivity, updateDownload]);
@@ -843,14 +844,14 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       task.start();
     } catch (e) {
-      console.log('[DownloadsContext] Failed to start background download', e);
+      logger.log('[DownloadsContext] Failed to start background download', e);
       updateDownload(compoundId, (d) => ({ ...d, status: 'error', updatedAt: Date.now() }));
       throw e;
     }
   }, [attachDownloadTask, maybeUpdateLiveActivity, resumeDownload, updateDownload]);
 
   const pauseDownload = useCallback(async (id: string) => {
-    console.log(`[DownloadsContext] Pausing download: ${id}`);
+    logger.log(`[DownloadsContext] Pausing download: ${id}`);
 
     // First, update the status to 'paused' immediately
     // This will cause any ongoing download/resume operations to check status and exit gracefully
@@ -865,7 +866,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       await task.pause();
     } catch (e) {
-      console.log(`[DownloadsContext] Pause failed: ${id}`, e);
+      logger.log(`[DownloadsContext] Pause failed: ${id}`, e);
     }
   }, [stopLiveActivityForDownload, updateDownload]);
 

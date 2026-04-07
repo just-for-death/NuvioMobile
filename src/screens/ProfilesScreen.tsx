@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -75,7 +76,7 @@ const ProfilesScreen: React.FC = () => {
         await mmkvStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify([defaultProfile]));
       }
     } catch (error) {
-      if (__DEV__) console.error('Error loading profiles:', error);
+      if (__DEV__) logger.error('Error loading profiles:', error);
       openAlert('Error', 'Failed to load profiles');
     } finally {
       setIsLoading(false);
@@ -101,7 +102,7 @@ const ProfilesScreen: React.FC = () => {
     try {
       await mmkvStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updatedProfiles));
     } catch (error) {
-      if (__DEV__) console.error('Error saving profiles:', error);
+      if (__DEV__) logger.error('Error saving profiles:', error);
       openAlert('Error', 'Failed to save profiles');
     }
   }, []);

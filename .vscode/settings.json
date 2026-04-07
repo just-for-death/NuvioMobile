@@ -13,12 +13,10 @@
         "**/bin/**",
         "**/build/**",
         "**/out/**",
-        "android/.settings/**",
-        "android/.project/**",
-        "android/.classpath/**",
-        "android/app/.settings/**",
-        "android/app/.project/**",
-        "android/app/.classpath/**"
+        "**/.settings/**",
+        "**/.project/**",
+        "**/.classpath/**",
+        "**/.factorypath/**"
     ],
     "java.project.resourceFilters": [
         "node_modules",

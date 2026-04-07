@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import { useState, useEffect, useCallback } from 'react';
 import { mmkvStorage } from '../services/mmkvStorage';
 
@@ -245,7 +246,7 @@ export const getSettings = (): AppSettings => {
 
     return finalSettings;
   } catch (error) {
-    if (__DEV__) console.error('[getSettings] Failed to load settings:', error);
+    if (__DEV__) logger.error('[getSettings] Failed to load settings:', error);
     return DEFAULT_SETTINGS;
   }
 };
@@ -295,16 +296,16 @@ export const useSettings = () => {
       
       // Ensure a current scope exists
       mmkvStorage.setString('@user:current', scope);
-      if (__DEV__) console.log(`Setting updated: ${key}`, value);
+      if (__DEV__) logger.log(`Setting updated: ${key}`, value);
 
       // Notify all subscribers that settings have changed (if requested)
       if (emitEvent) {
-        if (__DEV__) console.log('Emitting settings change event');
+        if (__DEV__) logger.log('Emitting settings change event');
         settingsEmitter.emit();
       }
 
     } catch (error) {
-      if (__DEV__) console.error('Failed to save settings:', error);
+      if (__DEV__) logger.error('Failed to save settings:', error);
     }
   }, []);
 

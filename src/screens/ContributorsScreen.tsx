@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -443,7 +444,7 @@ const ContributorsScreen: React.FC = () => {
             isLoading: false,
           };
         } catch (error) {
-          if (__DEV__) console.error(`Error fetching Discord user ${config.discordId}:`, error);
+          if (__DEV__) logger.error(`Error fetching Discord user ${config.discordId}:`, error);
           // Return fallback data
           return {
             ...config,
@@ -478,7 +479,7 @@ const ContributorsScreen: React.FC = () => {
       const data = await getDonationsWithCache(isRefresh);
       setDonations(Array.isArray(data) ? data : []);
     } catch (e) {
-      if (__DEV__) console.error('Error loading donations:', e);
+      if (__DEV__) logger.error('Error loading donations:', e);
       setDonationsError('Failed to load donors.');
       setDonations([]);
     } finally {
@@ -524,12 +525,12 @@ const ContributorsScreen: React.FC = () => {
                 // Remove invalid cache
                 await mmkvStorage.removeItem('github_contributors');
                 await mmkvStorage.removeItem('github_contributors_timestamp');
-                if (__DEV__) console.log('Removed invalid contributors cache');
+                if (__DEV__) logger.log('Removed invalid contributors cache');
               }
             }
           }
         } catch (cacheError) {
-          if (__DEV__) console.error('Cache read error:', cacheError);
+          if (__DEV__) logger.error('Cache read error:', cacheError);
           // Remove corrupted cache
           try {
             await mmkvStorage.removeItem('github_contributors');
@@ -546,7 +547,7 @@ const ContributorsScreen: React.FC = () => {
           await mmkvStorage.setItem('github_contributors', JSON.stringify(data));
           await mmkvStorage.setItem('github_contributors_timestamp', Date.now().toString());
         } catch (cacheError) {
-          if (__DEV__) console.error('Cache write error:', cacheError);
+          if (__DEV__) logger.error('Cache write error:', cacheError);
         }
       } else {
         // Clear any existing cache if we get invalid data
@@ -558,7 +559,7 @@ const ContributorsScreen: React.FC = () => {
       }
     } catch (err) {
       setError(t('contributors.error_failed'));
-      if (__DEV__) console.error('Error loading contributors:', err);
+      if (__DEV__) logger.error('Error loading contributors:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -575,11 +576,11 @@ const ContributorsScreen: React.FC = () => {
           if (!parsedData || !Array.isArray(parsedData) || parsedData.length === 0) {
             await mmkvStorage.removeItem('github_contributors');
             await mmkvStorage.removeItem('github_contributors_timestamp');
-            if (__DEV__) console.log('Cleared invalid cache on mount');
+            if (__DEV__) logger.log('Cleared invalid cache on mount');
           }
         }
       } catch (error) {
-        if (__DEV__) console.error('Error checking cache on mount:', error);
+        if (__DEV__) logger.error('Error checking cache on mount:', error);
       }
     };
 

@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import { Platform } from 'react-native';
 
 // Reuse the same base URL as campaign service
@@ -22,7 +23,7 @@ export interface SettingsConfig {
 class ConfigService {
     async getConfig<T>(key: string): Promise<T | null> {
         try {
-            console.log(`[ConfigService] Fetching config for key: ${key}`);
+            logger.log(`[ConfigService] Fetching config for key: ${key}`);
             const timestamp = Date.now();
             const response = await fetch(`${CAMPAIGN_API_URL}/api/config?key=${key}&t=${timestamp}`, {
                 headers: {
@@ -45,7 +46,7 @@ class ConfigService {
 
             return data as T;
         } catch (error) {
-            console.warn('[ConfigService] Error fetching config:', error);
+            logger.warn('[ConfigService] Error fetching config:', error);
             return null;
         }
     }

@@ -711,7 +711,7 @@ class CatalogService {
   }
 
   async getContentDetails(type: string, id: string, preferredAddonId?: string): Promise<StreamingContent | null> {
-    console.log(`🔍 [CatalogService] getContentDetails called:`, { type, id, preferredAddonId });
+    logger.log(`🔍 [CatalogService] getContentDetails called:`, { type, id, preferredAddonId });
     try {
       // Try up to 2 times with increasing delays to reduce CPU load
       let meta = null;
@@ -719,20 +719,20 @@ class CatalogService {
 
       for (let i = 0; i < 2; i++) {
         try {
-          console.log(`🔍 [CatalogService] Attempt ${i + 1}/2 for getContentDetails:`, { type, id, preferredAddonId });
+          logger.log(`🔍 [CatalogService] Attempt ${i + 1}/2 for getContentDetails:`, { type, id, preferredAddonId });
 
           // Skip meta requests for non-content ids (e.g., provider slugs)
           const isValidId = await stremioService.isValidContentId(type, id);
-          console.log(`🔍 [CatalogService] Content ID validation:`, { type, id, isValidId });
+          logger.log(`🔍 [CatalogService] Content ID validation:`, { type, id, isValidId });
 
           if (!isValidId) {
-            console.log(`🔍 [CatalogService] Invalid content ID, breaking retry loop`);
+            logger.log(`🔍 [CatalogService] Invalid content ID, breaking retry loop`);
             break;
           }
 
-          console.log(`🔍 [CatalogService] Calling stremioService.getMetaDetails:`, { type, id, preferredAddonId });
+          logger.log(`🔍 [CatalogService] Calling stremioService.getMetaDetails:`, { type, id, preferredAddonId });
           meta = await stremioService.getMetaDetails(type, id, preferredAddonId);
-          console.log(`🔍 [CatalogService] stremioService.getMetaDetails result:`, {
+          logger.log(`🔍 [CatalogService] stremioService.getMetaDetails result:`, {
             hasMeta: !!meta,
             metaId: meta?.id,
             metaName: meta?.name,
@@ -743,7 +743,7 @@ class CatalogService {
           await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
         } catch (error) {
           lastError = error;
-          console.log(`🔍 [CatalogService] Attempt ${i + 1} failed:`, {
+          logger.log(`🔍 [CatalogService] Attempt ${i + 1} failed:`, {
             errorMessage: error instanceof Error ? error.message : String(error),
             isAxiosError: (error as any)?.isAxiosError,
             responseStatus: (error as any)?.response?.status,
@@ -755,7 +755,7 @@ class CatalogService {
       }
 
       if (meta) {
-        console.log(`🔍 [CatalogService] Meta found, converting to StreamingContent:`, {
+        logger.log(`🔍 [CatalogService] Meta found, converting to StreamingContent:`, {
           metaId: meta.id,
           metaName: meta.name,
           metaType: meta.type
@@ -768,7 +768,7 @@ class CatalogService {
         // Check if it's in the library
         content.inLibrary = this.library[`${type}:${id}`] !== undefined;
 
-        console.log(`🔍 [CatalogService] Successfully converted meta to StreamingContent:`, {
+        logger.log(`🔍 [CatalogService] Successfully converted meta to StreamingContent:`, {
           contentId: content.id,
           contentName: content.name,
           contentType: content.type,
@@ -778,13 +778,13 @@ class CatalogService {
         return content;
       }
 
-      console.log(`🔍 [CatalogService] No meta found, checking lastError:`, {
+      logger.log(`🔍 [CatalogService] No meta found, checking lastError:`, {
         hasLastError: !!lastError,
         lastErrorMessage: lastError instanceof Error ? lastError.message : String(lastError)
       });
 
       if (lastError) {
-        console.log(`🔍 [CatalogService] Throwing lastError:`, {
+        logger.log(`🔍 [CatalogService] Throwing lastError:`, {
           errorMessage: lastError instanceof Error ? lastError.message : String(lastError),
           isAxiosError: (lastError as any)?.isAxiosError,
           responseStatus: (lastError as any)?.response?.status
@@ -792,10 +792,10 @@ class CatalogService {
         throw lastError;
       }
 
-      console.log(`🔍 [CatalogService] No meta and no error, returning null`);
+      logger.log(`🔍 [CatalogService] No meta and no error, returning null`);
       return null;
     } catch (error) {
-      console.log(`🔍 [CatalogService] getContentDetails caught error:`, {
+      logger.log(`🔍 [CatalogService] getContentDetails caught error:`, {
         errorMessage: error instanceof Error ? error.message : String(error),
         isAxiosError: (error as any)?.isAxiosError,
         responseStatus: (error as any)?.response?.status,
@@ -808,12 +808,12 @@ class CatalogService {
 
   // Public method for getting enhanced metadata details (used by MetadataScreen)
   async getEnhancedContentDetails(type: string, id: string, preferredAddonId?: string): Promise<StreamingContent | null> {
-    console.log(`🔍 [CatalogService] getEnhancedContentDetails called:`, { type, id, preferredAddonId });
+    logger.log(`🔍 [CatalogService] getEnhancedContentDetails called:`, { type, id, preferredAddonId });
     logger.log(`🔍 [MetadataScreen] Fetching enhanced metadata for ${type}:${id} ${preferredAddonId ? `from addon ${preferredAddonId}` : ''}`);
 
     try {
       const result = await this.getContentDetails(type, id, preferredAddonId);
-      console.log(`🔍 [CatalogService] getEnhancedContentDetails result:`, {
+      logger.log(`🔍 [CatalogService] getEnhancedContentDetails result:`, {
         hasResult: !!result,
         resultId: result?.id,
         resultName: result?.name,
@@ -821,7 +821,7 @@ class CatalogService {
       });
       return result;
     } catch (error) {
-      console.log(`🔍 [CatalogService] getEnhancedContentDetails error:`, {
+      logger.log(`🔍 [CatalogService] getEnhancedContentDetails error:`, {
         errorMessage: error instanceof Error ? error.message : String(error),
         isAxiosError: (error as any)?.isAxiosError,
         responseStatus: (error as any)?.response?.status,
@@ -1052,9 +1052,9 @@ class CatalogService {
     if (content.type === 'series') {
       try {
         await notificationService.updateNotificationsForSeries(content.id);
-        console.log(`[CatalogService] Auto-setup notifications for series: ${content.name}`);
+        logger.log(`[CatalogService] Auto-setup notifications for series: ${content.name}`);
       } catch (error) {
-        console.error(`[CatalogService] Failed to setup notifications for ${content.name}:`, error);
+        logger.error(`[CatalogService] Failed to setup notifications for ${content.name}:`, error);
       }
     }
   }
@@ -1083,9 +1083,9 @@ class CatalogService {
         for (const notification of seriesToCancel) {
           await notificationService.cancelNotification(notification.id);
         }
-        console.log(`[CatalogService] Cancelled ${seriesToCancel.length} notifications for removed series: ${id}`);
+        logger.log(`[CatalogService] Cancelled ${seriesToCancel.length} notifications for removed series: ${id}`);
       } catch (error) {
-        console.error(`[CatalogService] Failed to cancel notifications for removed series ${id}:`, error);
+        logger.error(`[CatalogService] Failed to cancel notifications for removed series ${id}:`, error);
       }
     }
   }
@@ -1672,19 +1672,19 @@ class CatalogService {
 
   async getStremioId(type: string, tmdbId: string): Promise<string | null> {
     if (__DEV__) {
-      console.log('=== CatalogService.getStremioId ===');
-      console.log('Input type:', type);
-      console.log('Input tmdbId:', tmdbId);
+      logger.log('=== CatalogService.getStremioId ===');
+      logger.log('Input type:', type);
+      logger.log('Input tmdbId:', tmdbId);
     }
 
     try {
       // For movies, use the tt prefix with IMDb ID
       if (type === 'movie') {
-        if (__DEV__) console.log('Processing movie - fetching TMDB details...');
+        if (__DEV__) logger.log('Processing movie - fetching TMDB details...');
         const tmdbService = TMDBService.getInstance();
         const movieDetails = await tmdbService.getMovieDetails(tmdbId);
 
-        if (__DEV__) console.log('Movie details result:', {
+        if (__DEV__) logger.log('Movie details result:', {
           id: movieDetails?.id,
           title: movieDetails?.title,
           imdb_id: movieDetails?.imdb_id,
@@ -1692,48 +1692,48 @@ class CatalogService {
         });
 
         if (movieDetails?.imdb_id) {
-          if (__DEV__) console.log('Successfully found IMDb ID:', movieDetails.imdb_id);
+          if (__DEV__) logger.log('Successfully found IMDb ID:', movieDetails.imdb_id);
           return movieDetails.imdb_id;
         } else {
-          console.warn('No IMDb ID found for movie:', tmdbId);
+          logger.warn('No IMDb ID found for movie:', tmdbId);
           return null;
         }
       }
       // For TV shows, get the IMDb ID like movies
       else if (type === 'tv' || type === 'series') {
-        if (__DEV__) console.log('Processing TV show - fetching TMDB details for IMDb ID...');
+        if (__DEV__) logger.log('Processing TV show - fetching TMDB details for IMDb ID...');
         const tmdbService = TMDBService.getInstance();
 
         // Get TV show external IDs to find IMDb ID
         const externalIds = await tmdbService.getShowExternalIds(parseInt(tmdbId));
 
-        if (__DEV__) console.log('TV show external IDs result:', {
+        if (__DEV__) logger.log('TV show external IDs result:', {
           tmdbId: tmdbId,
           imdb_id: externalIds?.imdb_id,
           hasImdbId: !!externalIds?.imdb_id
         });
 
         if (externalIds?.imdb_id) {
-          if (__DEV__) console.log('Successfully found IMDb ID for TV show:', externalIds.imdb_id);
+          if (__DEV__) logger.log('Successfully found IMDb ID for TV show:', externalIds.imdb_id);
           return externalIds.imdb_id;
         } else {
-          console.warn('No IMDb ID found for TV show, falling back to kitsu format:', tmdbId);
+          logger.warn('No IMDb ID found for TV show, falling back to kitsu format:', tmdbId);
           const fallbackId = `kitsu:${tmdbId}`;
-          if (__DEV__) console.log('Generated fallback Stremio ID for TV:', fallbackId);
+          if (__DEV__) logger.log('Generated fallback Stremio ID for TV:', fallbackId);
           return fallbackId;
         }
       }
       else {
-        console.warn('Unknown type provided:', type);
+        logger.warn('Unknown type provided:', type);
         return null;
       }
     } catch (error: any) {
       if (__DEV__) {
-        console.error('=== Error in getStremioId ===');
-        console.error('Type:', type);
-        console.error('TMDB ID:', tmdbId);
-        console.error('Error details:', error);
-        console.error('Error message:', error.message);
+        logger.error('=== Error in getStremioId ===');
+        logger.error('Type:', type);
+        logger.error('TMDB ID:', tmdbId);
+        logger.error('Error details:', error);
+        logger.error('Error message:', error.message);
       }
       logger.error('Error getting Stremio ID:', error);
       return null;

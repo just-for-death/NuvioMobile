@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useEffect, useRef } from 'react';
 import {
   View,
@@ -96,7 +97,7 @@ const AndroidUpdatePopup: React.FC<AndroidUpdatePopupProps> = ({
 
       // Safety timeout
       timeoutRef.current = setTimeout(() => {
-        console.warn('AndroidUpdatePopup: Timeout reached, auto-dismissing');
+        logger.warn('AndroidUpdatePopup: Timeout reached, auto-dismissing');
         onDismiss();
       }, 30000);
     } else {

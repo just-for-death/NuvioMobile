@@ -1,3 +1,4 @@
+import { logger } from "../../utils/logger";
 import axios from 'axios';
 import { mmkvStorage } from '../mmkvStorage';
 import { MalAuth } from './MalAuth';
@@ -45,7 +46,7 @@ export const MalApiService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch MAL user list', error);
+      logger.error('Failed to fetch MAL user list', error);
       throw error;
     }
   },
@@ -57,7 +58,7 @@ export const MalApiService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Failed to search MAL anime', error);
+      logger.error('Failed to search MAL anime', error);
       throw error;
     }
   },
@@ -92,7 +93,7 @@ export const MalApiService = {
         });
         return response.data;
      } catch (error) {
-         console.error('Failed to get anime details', error);
+         logger.error('Failed to get anime details', error);
          throw error;
      }
   },
@@ -106,7 +107,7 @@ export const MalApiService = {
           });
           return response.data;
       } catch (error) {
-          console.error('Failed to get user info', error);
+          logger.error('Failed to get user info', error);
           throw error;
       }
   },
@@ -118,7 +119,7 @@ export const MalApiService = {
           });
           return response.data;
       } catch (error) {
-          console.error('Failed to get my list status', error);
+          logger.error('Failed to get my list status', error);
           return { num_episodes: 0 };
       }
   }

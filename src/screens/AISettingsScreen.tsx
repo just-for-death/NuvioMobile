@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -101,7 +102,7 @@ const AISettingsScreen: React.FC = () => {
         setCustomModel('');
       }
     } catch (error) {
-      if (__DEV__) console.error('Error loading OpenRouter API key:', error);
+      if (__DEV__) logger.error('Error loading OpenRouter API key:', error);
     }
   };
 
@@ -128,7 +129,7 @@ const AISettingsScreen: React.FC = () => {
       openAlert(t('common.success'), t('ai_settings.success_saved'));
     } catch (error) {
       openAlert(t('common.error'), t('ai_settings.error_save'));
-      if (__DEV__) console.error('Error saving OpenRouter API key:', error);
+      if (__DEV__) logger.error('Error saving OpenRouter API key:', error);
     } finally {
       setLoading(false);
     }

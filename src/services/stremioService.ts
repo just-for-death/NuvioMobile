@@ -368,7 +368,7 @@ class StremioService {
       if (lowerPrefix.endsWith(':') || lowerPrefix.endsWith('_')) return true;
       return lowerId.length > lowerPrefix.length;
     });
-    if (__DEV__) console.log(`🔍 [isValidContentId] Prefix match result: ${result} for ID '${id}'`);
+    if (__DEV__) logger.log(`🔍 [isValidContentId] Prefix match result: ${result} for ID '${id}'`);
     return result;
   }
 
@@ -940,7 +940,7 @@ class StremioService {
     }
 
     try {
-      if (__DEV__) console.log(`🔍 [getCatalog] Manifest URL for ${manifest.name}: ${manifest.url}`);
+      if (__DEV__) logger.log(`🔍 [getCatalog] Manifest URL for ${manifest.name}: ${manifest.url}`);
       const { baseUrl, queryParams } = this.getAddonBaseURL(manifest.url);
 
       // Build extraArgs as combined path segment per protocol
@@ -983,7 +983,7 @@ class StremioService {
       try {
         // For page 1 without filters, try simple URL first (best compatibility)
         if (pageSkip === 0 && extraParts.length === 0) {
-          if (__DEV__) console.log(`🔍 [getCatalog] Trying simple URL for ${manifest.name}: ${urlSimple}`);
+          if (__DEV__) logger.log(`🔍 [getCatalog] Trying simple URL for ${manifest.name}: ${urlSimple}`);
           response = await this.retryRequest(async () => axios.get(urlSimple, safeAxiosConfig));
           // Check if we got valid metas - if empty, try other styles
           if (!response?.data?.metas || response.data.metas.length === 0) {
@@ -995,7 +995,7 @@ class StremioService {
       } catch (e) {
         try {
           // Try path-style URL (correct per protocol)
-          if (__DEV__) console.log(`🔍 [getCatalog] Trying path-style URL for ${manifest.name}: ${urlPathStyle}`);
+          if (__DEV__) logger.log(`🔍 [getCatalog] Trying path-style URL for ${manifest.name}: ${urlPathStyle}`);
           response = await this.retryRequest(async () => axios.get(urlPathStyle, safeAxiosConfig));
           // Check if we got valid metas - if empty, try query-style
           if (!response?.data?.metas || response.data.metas.length === 0) {
@@ -1004,10 +1004,10 @@ class StremioService {
         } catch (e2) {
           try {
             // Try legacy query-style URL as last resort
-            if (__DEV__) console.log(`🔍 [getCatalog] Trying query-style URL for ${manifest.name}: ${urlQueryStyle}`);
+            if (__DEV__) logger.log(`🔍 [getCatalog] Trying query-style URL for ${manifest.name}: ${urlQueryStyle}`);
             response = await this.retryRequest(async () => axios.get(urlQueryStyle, safeAxiosConfig));
           } catch (e3) {
-            if (__DEV__) console.log(`❌ [getCatalog] All URL styles failed for ${manifest.name}`);
+            if (__DEV__) logger.log(`❌ [getCatalog] All URL styles failed for ${manifest.name}`);
             throw e3;
           }
         }
@@ -1108,7 +1108,7 @@ class StremioService {
               if (response.data && response.data.meta && response.data.meta.id) {
                 return response.data.meta;
               } else {
-                if (__DEV__) console.warn(`⚠️ [getMetaDetails] Preferred addon ${preferredAddon.name} returned empty/invalid meta`);
+                if (__DEV__) logger.warn(`⚠️ [getMetaDetails] Preferred addon ${preferredAddon.name} returned empty/invalid meta`);
               }
             } catch (error: any) {
               // Continue trying other addons
@@ -1139,7 +1139,7 @@ class StremioService {
           if (response.data && response.data.meta && response.data.meta.id) {
             return response.data.meta;
           } else {
-            if (__DEV__) console.log(`[getMetaDetails] Cinemeta URL ${baseUrl} returned empty/invalid meta`);
+            if (__DEV__) logger.log(`[getMetaDetails] Cinemeta URL ${baseUrl} returned empty/invalid meta`);
           }
         } catch (error: any) {
           continue; // Try next URL
@@ -1210,7 +1210,7 @@ class StremioService {
           if (response.data && response.data.meta && response.data.meta.id) {
             return response.data.meta;
           } else {
-            if (__DEV__) console.log(`[getMetaDetails] Addon ${addon.name} returned empty/invalid meta`);
+            if (__DEV__) logger.log(`[getMetaDetails] Addon ${addon.name} returned empty/invalid meta`);
           }
         } catch (error: any) {
           continue; // Try next addon
@@ -1553,14 +1553,14 @@ class StremioService {
                   ? `${baseUrl}/stream/${effectiveType}/${encodedId}.json?${queryParams}`
                   : `${baseUrl}/stream/${effectiveType}/${encodedId}.json`;
                 
-                console.log(
+                logger.log(
                   `  ❌ ${addon.name} (${addon.id}):\n` +
                   `     types=[${types.join(',')}] typeMatch=${typeMatch}\n` +
                   `     prefixes=[${prefixes.join(',')}] prefixMatch=${prefixMatch}\n` +
                   `     url=${wouldBeUrl}`
                 );
               } else {
-                console.log(`  ❌ ${addon.name} (${addon.id}): no URL configured`);
+                logger.log(`  ❌ ${addon.name} (${addon.id}): no URL configured`);
               }
             } else if (typeof resource === 'string' && resource === 'stream') {
               // String resource - check addon-level types and prefixes
@@ -1575,7 +1575,7 @@ class StremioService {
                   ? `${baseUrl}/stream/${effectiveType}/${encodedId}.json?${queryParams}`
                   : `${baseUrl}/stream/${effectiveType}/${encodedId}.json`;
                 
-                console.log(
+                logger.log(
                   `  ❌ ${addon.name} (${addon.id}) [addon-level]:\n` +
                   `     types=[${addonTypes.join(',')}] typeMatch=${typeMatch}\n` +
                   `     prefixes=[${addonPrefixes.join(',')}] prefixMatch=${prefixMatch}\n` +

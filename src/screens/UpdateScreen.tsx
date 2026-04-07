@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -205,7 +206,7 @@ const UpdateScreen: React.FC = () => {
         // I'll use status_ready effectively.
       }
     } catch (error) {
-      if (__DEV__) console.error('Error checking for updates:', error);
+      if (__DEV__) logger.error('Error checking for updates:', error);
       setUpdateStatus('error');
       setLastOperation(`${t('common.error')}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       openAlert(t('common.error'), t('updates.status_error'));
@@ -299,7 +300,7 @@ const UpdateScreen: React.FC = () => {
         openAlert(t('updates.alert_no_update_title'), t('updates.alert_no_update_to_install'));
       }
     } catch (error) {
-      if (__DEV__) console.error('Error installing update:', error);
+      if (__DEV__) logger.error('Error installing update:', error);
       setUpdateStatus('error');
       setLastOperation(`${t('updates.status_error')}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       openAlert(t('common.error'), t('updates.alert_install_failed'));
@@ -351,7 +352,7 @@ const UpdateScreen: React.FC = () => {
         setLastOperation('Update server is not reachable');
       }
     } catch (error) {
-      if (__DEV__) console.error('Error testing connectivity:', error);
+      if (__DEV__) logger.error('Error testing connectivity:', error);
       setLastOperation(`Connectivity test error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       // Logs disabled
     }
@@ -363,7 +364,7 @@ const UpdateScreen: React.FC = () => {
       await UpdateService.testAllAssetUrls();
       setLastOperation('Asset URL testing completed');
     } catch (error) {
-      if (__DEV__) console.error('Error testing asset URLs:', error);
+      if (__DEV__) logger.error('Error testing asset URLs:', error);
       setLastOperation(`Asset URL test error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       // Logs disabled
     }

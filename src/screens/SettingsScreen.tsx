@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useRealtimeConfig } from '../hooks/useRealtimeConfig';
@@ -227,7 +228,7 @@ const SettingsScreen: React.FC = () => {
         const devModeEnabled = await mmkvStorage.getItem('developer_mode_enabled');
         setDeveloperModeEnabled(devModeEnabled === 'true');
       } catch (error) {
-        if (__DEV__) console.error('Failed to load developer mode state:', error);
+        if (__DEV__) logger.error('Failed to load developer mode state:', error);
       }
     };
     loadDevModeState();
@@ -269,7 +270,7 @@ const SettingsScreen: React.FC = () => {
         setDisplayDownloads(downloads);
       }
     } catch (error) {
-      if (__DEV__) console.error('Error loading settings data:', error);
+      if (__DEV__) logger.error('Error loading settings data:', error);
     }
   }, []);
 
@@ -296,7 +297,7 @@ const SettingsScreen: React.FC = () => {
           setTotalDownloads(downloads);
         }
       } catch (error) {
-        if (__DEV__) console.error('Error polling downloads:', error);
+        if (__DEV__) logger.error('Error polling downloads:', error);
       }
     }, 3600000);
 
@@ -346,7 +347,7 @@ const SettingsScreen: React.FC = () => {
               openAlert('Success', 'MDBList cache has been cleared.');
             } catch (error) {
               openAlert('Error', 'Could not clear MDBList cache.');
-              if (__DEV__) console.error('Error clearing MDBList cache:', error);
+              if (__DEV__) logger.error('Error clearing MDBList cache:', error);
             }
           }
         }

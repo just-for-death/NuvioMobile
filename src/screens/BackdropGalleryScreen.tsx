@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -63,7 +64,7 @@ const BackdropGalleryScreen: React.FC = () => {
         }
 
         if (__DEV__) {
-          console.log('[BackdropGallery] TMDB response:', {
+          logger.log('[BackdropGallery] TMDB response:', {
             tmdbId,
             type,
             hasImages: !!images,
@@ -79,7 +80,7 @@ const BackdropGalleryScreen: React.FC = () => {
         }
       } catch (err) {
         setError('Failed to load backdrops');
-        console.error('Backdrop fetch error:', err);
+        logger.error('Backdrop fetch error:', err);
       } finally {
         setLoading(false);
       }

@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Device from 'expo-device';
@@ -29,7 +30,7 @@ class AndroidUpdateService {
 
         const apkUrl = this.getBestApkUrl(release);
         if (!apkUrl) {
-            console.warn('No suitable APK found for this device architecture');
+            logger.warn('No suitable APK found for this device architecture');
             return false;
         }
 
@@ -38,7 +39,7 @@ class AndroidUpdateService {
             const filename = `nuvio-update-${release.tag_name}.apk`;
             const cacheDir = FileSystem.cacheDirectory;
             if (!cacheDir) {
-                console.error('Cache directory is not available');
+                logger.error('Cache directory is not available');
                 return false;
             }
             const downloadDest = `${cacheDir}${filename}`;
@@ -60,7 +61,7 @@ class AndroidUpdateService {
             const downloadRes = await downloadResumable.downloadAsync();
 
             if (!downloadRes || downloadRes.status !== 200) {
-                console.error('Failed to download APK', downloadRes?.status);
+                logger.error('Failed to download APK', downloadRes?.status);
                 return false;
             }
 
@@ -68,17 +69,17 @@ class AndroidUpdateService {
             const contentUri = await FileSystem.getContentUriAsync(downloadDest);
 
             // Launch the intent to install
-            console.log('AndroidUpdateService: Starting installation intent with content URI:', contentUri);
+            logger.log('AndroidUpdateService: Starting installation intent with content URI:', contentUri);
             await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
                 data: contentUri,
                 flags: FLAG_GRANT_READ_URI_PERMISSION | FLAG_ACTIVITY_NEW_TASK,
                 type: 'application/vnd.android.package-archive',
             });
 
-            console.log('AndroidUpdateService: Installation intent started successfully');
+            logger.log('AndroidUpdateService: Installation intent started successfully');
             return true;
         } catch (error) {
-            console.error('Error downloading or installing update:', error);
+            logger.error('Error downloading or installing update:', error);
             return false;
         }
     }
@@ -88,11 +89,11 @@ class AndroidUpdateService {
      * Priority: Specific Arch > Universal > First APK found
      */
     private getBestApkUrl(release: GithubReleaseInfo): string | null {
-        console.log('AndroidUpdateService: Finding best APK for release assets:', release.assets?.length);
+        logger.log('AndroidUpdateService: Finding best APK for release assets:', release.assets?.length);
         if (!release.assets || release.assets.length === 0) return null;
 
         const supportedArchs = Device.supportedCpuArchitectures; // e.g. ['arm64-v8a', 'armeabi-v7a']
-        console.log('Device architectures:', supportedArchs);
+        logger.log('Device architectures:', supportedArchs);
 
         // Helper to find asset containing string (case-insensitive)
         const findAsset = (keyword: string) =>
@@ -111,7 +112,7 @@ class AndroidUpdateService {
 
         // 2. No fallback: If no specific architecture match is found, return null.
         // User requested strict matching to avoid downloading incompatible APKs.
-        console.warn('AndroidUpdateService: No matching APK found for device architectures:', supportedArchs);
+        logger.warn('AndroidUpdateService: No matching APK found for device architectures:', supportedArchs);
         return null;
     }
 }

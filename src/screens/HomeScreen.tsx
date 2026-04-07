@@ -237,7 +237,7 @@ const HomeScreen = () => {
         });
 
         void Promise.all(workers).catch((error) => {
-          if (__DEV__) console.warn('[HomeScreen] Catalog loader worker failed:', error);
+          if (__DEV__) logger.warn('[HomeScreen] Catalog loader worker failed:', error);
         });
       };
 
@@ -315,7 +315,7 @@ const HomeScreen = () => {
                     });
                   }
                 } catch (error) {
-                  if (__DEV__) console.error(`[HomeScreen] Failed to load ${catalog.name} from ${addon.name}:`, error);
+                  if (__DEV__) logger.error(`[HomeScreen] Failed to load ${catalog.name} from ${addon.name}:`, error);
                 } finally {
                   // Update loading count - ensure on main thread
                   InteractionManager.runAfterInteractions(() => {
@@ -359,7 +359,7 @@ const HomeScreen = () => {
       // Start catalog requests with bounded concurrency
       launchCatalogLoaders();
     } catch (error) {
-      if (__DEV__) console.error('[HomeScreen] Error in progressive catalog loading:', error);
+      if (__DEV__) logger.error('[HomeScreen] Error in progressive catalog loading:', error);
       InteractionManager.runAfterInteractions(() => {
         setCatalogsLoading(false);
       });
@@ -502,9 +502,9 @@ const HomeScreen = () => {
         // This frees memory while keeping disk cache intact for fast restoration
         try {
           FastImage.clearMemoryCache();
-          if (__DEV__) console.log('[HomeScreen] Cleared memory cache on background');
+          if (__DEV__) logger.log('[HomeScreen] Cleared memory cache on background');
         } catch (error) {
-          if (__DEV__) console.warn('[HomeScreen] Failed to clear memory cache:', error);
+          if (__DEV__) logger.warn('[HomeScreen] Failed to clear memory cache:', error);
         }
       }
     });
@@ -560,7 +560,7 @@ const HomeScreen = () => {
       FastImage.preload(sources);
     } catch (error) {
       // Silently handle preload errors
-      if (__DEV__) console.warn('Image preload error:', error);
+      if (__DEV__) logger.warn('Image preload error:', error);
     }
   }, []);
 
@@ -623,7 +623,7 @@ const HomeScreen = () => {
         setHasContinueWatching(hasContent);
 
       } catch (error) {
-        if (__DEV__) console.error('[HomeScreen] Error refreshing continue watching:', error);
+        if (__DEV__) logger.error('[HomeScreen] Error refreshing continue watching:', error);
         setHasContinueWatching(false);
       }
     }

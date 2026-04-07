@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -223,7 +224,7 @@ const OnboardingScreen = () => {
       await mmkvStorage.setItem('hasCompletedOnboarding', 'true');
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (error) {
-      if (__DEV__) console.error('Error saving onboarding status:', error);
+      if (__DEV__) logger.error('Error saving onboarding status:', error);
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     }
   };

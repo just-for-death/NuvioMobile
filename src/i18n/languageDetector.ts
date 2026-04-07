@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import { getLocales } from 'expo-localization';
 import { LanguageDetectorAsyncModule } from 'i18next';
 import { mmkvStorage } from '../services/mmkvStorage';
@@ -23,7 +24,7 @@ const languageDetector: LanguageDetectorAsyncModule = {
         const bestTag = locales[0].languageTag;
         callback(bestTag);
       } catch (error) {
-        console.error("[LangDetector(TEST)] Failed to detect language:", error);
+        logger.error("[LangDetector(TEST)] Failed to detect language:", error);
         callback("en");
       }
     };

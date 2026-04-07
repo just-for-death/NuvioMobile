@@ -658,7 +658,7 @@ const KSPlayerCore: React.FC = () => {
 
   // Track selection handlers - update state, prop change triggers native update
   const handleSelectTextTrack = useCallback((trackId: number) => {
-    console.log('[KSPlayerCore] handleSelectTextTrack called with trackId:', trackId);
+    logger.log('[KSPlayerCore] handleSelectTextTrack called with trackId:', trackId);
 
     // Disable custom subtitles when selecting a built-in track
     // This ensures the textTrack prop is actually passed to the native player

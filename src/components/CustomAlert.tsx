@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useEffect, useCallback } from 'react';
 import {
   Modal,
@@ -70,7 +71,7 @@ export const CustomAlert = ({
       action.onPress();
       onClose();
     } catch (error) {
-      console.warn('[CustomAlert] Error in action handler:', error);
+      logger.warn('[CustomAlert] Error in action handler:', error);
       onClose();
     }
   }, [onClose]);

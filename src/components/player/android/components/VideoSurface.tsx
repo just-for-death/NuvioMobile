@@ -290,14 +290,14 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
             const res = await fetch(url, { method: 'GET', headers: { Range: 'bytes=0-2047' } });
             const text = await res.text();
             const prefix = text.slice(0, 200).replace(/\s+/g, ' ').trim();
-            console.log('[VideoSurface] Manifest probe:', {
+            logger.log('[VideoSurface] Manifest probe:', {
                 status: res.status,
                 contentType: res.headers.get('content-type'),
                 contentEncoding: res.headers.get('content-encoding'),
                 prefix,
             });
         } catch (e: any) {
-            console.log('[VideoSurface] Manifest probe failed:', e?.message);
+            logger.log('[VideoSurface] Manifest probe failed:', e?.message);
         }
     }, []);
 
@@ -319,7 +319,7 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
         const key = `${streamUrl}::${JSON.stringify(exoRequestHeaders)}`;
         if (lastLoggedExoRequestKeyRef.current === key) return;
         lastLoggedExoRequestKeyRef.current = key;
-        console.log('[VideoSurface] Headers:', exoRequestHeaders);
+        logger.log('[VideoSurface] Headers:', exoRequestHeaders);
     }, [streamUrl, useExoPlayer, exoRequestHeaders]);
 
     const lastPipAutoEnterStateRef = useRef<boolean | null>(null);
@@ -337,7 +337,7 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
     }, [resizeMode, useExoPlayer, mpvPlayerRef]);
 
     const handleMpvLoad = (data: { duration: number; width: number; height: number }) => {
-        console.log('[VideoSurface] MPV onLoad received:', data);
+        logger.log('[VideoSurface] MPV onLoad received:', data);
         onLoad({
             duration: data.duration,
             naturalSize: {
@@ -355,7 +355,7 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
     };
 
     const handleMpvError = (error: { error: string }) => {
-        console.log('[VideoSurface] MPV onError received:', error);
+        logger.log('[VideoSurface] MPV onError received:', error);
         onError({
             error: {
                 errorString: error.error,
@@ -364,7 +364,7 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
     };
 
     const handleMpvEnd = () => {
-        console.log('[VideoSurface] MPV onEnd received');
+        logger.log('[VideoSurface] MPV onEnd received');
         onEnd();
     };
 
@@ -433,7 +433,7 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
     };
 
     const handleExoEnd = () => {
-        console.log('[VideoSurface] ExoPlayer onEnd received');
+        logger.log('[VideoSurface] ExoPlayer onEnd received');
         onEnd();
     };
 

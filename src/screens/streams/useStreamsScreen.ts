@@ -183,7 +183,7 @@ export const useStreamsScreen = () => {
         setAlertActions(actions && actions.length > 0 ? actions : [{ label: 'OK', onPress: () => { } }]);
         setAlertVisible(true);
       } catch (error) {
-        console.warn('[StreamsScreen] Error showing alert:', error);
+        logger.warn('[StreamsScreen] Error showing alert:', error);
       }
     },
     []

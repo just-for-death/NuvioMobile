@@ -368,7 +368,7 @@ const AndroidVideoPlayer: React.FC = () => {
     if (!playerState.isMounted.current) return;
 
     const videoDuration = data.duration;
-    console.log('[AndroidVideoPlayer] handleLoad called:', {
+    logger.log('[AndroidVideoPlayer] handleLoad called:', {
       duration: videoDuration,
       initialPosition: watchProgress.initialPosition,
       showResumeOverlay: watchProgress.showResumeOverlay,
@@ -390,7 +390,7 @@ const AndroidVideoPlayer: React.FC = () => {
     }
 
     if (data.audioTracks) {
-      console.log('[TrackDebug] raw audioTracks:', JSON.stringify(data.audioTracks));
+      logger.log('[TrackDebug] raw audioTracks:', JSON.stringify(data.audioTracks));
       const formatted = data.audioTracks.map((t: any, i: number) => ({
         // react-native-video selectedAudioTrack {type:'index'} uses 0-based list index.
         id: i,
@@ -400,7 +400,7 @@ const AndroidVideoPlayer: React.FC = () => {
       tracksHook.setRnVideoAudioTracks(formatted);
     }
     if (data.textTracks) {
-      console.log('[TrackDebug] raw textTracks:', JSON.stringify(data.textTracks));
+      logger.log('[TrackDebug] raw textTracks:', JSON.stringify(data.textTracks));
       const formatted = data.textTracks.map((t: any, i: number) => ({
         // react-native-video selectedTextTrack {type:'index'} uses 0-based list index.
         // Using `t.index` can be non-unique/misaligned and breaks selection/rendering.
@@ -464,21 +464,21 @@ const AndroidVideoPlayer: React.FC = () => {
     const resumeTarget = watchProgress.initialPosition || watchProgress.initialSeekTargetRef?.current;
     if (resumeTarget && resumeTarget > 0 && !watchProgress.showResumeOverlay && videoDuration > 0) {
       const seekPosition = Math.min(resumeTarget, videoDuration - 0.5);
-      console.log('[AndroidVideoPlayer] Seeking to resume position:', seekPosition, 'duration:', videoDuration, 'useExoPlayer:', useExoPlayer);
+      logger.log('[AndroidVideoPlayer] Seeking to resume position:', seekPosition, 'duration:', videoDuration, 'useExoPlayer:', useExoPlayer);
 
       // Use a small delay to ensure the player is ready
       // Directly use refs to avoid stale closure issues
       setTimeout(() => {
-        console.log('[AndroidVideoPlayer] Executing resume seek to:', seekPosition, 'ExoPlayer available:', !!exoPlayerRef.current, 'MPV available:', !!mpvPlayerRef.current);
+        logger.log('[AndroidVideoPlayer] Executing resume seek to:', seekPosition, 'ExoPlayer available:', !!exoPlayerRef.current, 'MPV available:', !!mpvPlayerRef.current);
 
         if (useExoPlayer && exoPlayerRef.current) {
-          console.log('[AndroidVideoPlayer] Seeking ExoPlayer to resume position:', seekPosition);
+          logger.log('[AndroidVideoPlayer] Seeking ExoPlayer to resume position:', seekPosition);
           exoPlayerRef.current.seek(seekPosition);
         } else if (mpvPlayerRef.current) {
-          console.log('[AndroidVideoPlayer] Seeking MPV to resume position:', seekPosition);
+          logger.log('[AndroidVideoPlayer] Seeking MPV to resume position:', seekPosition);
           mpvPlayerRef.current.seek(seekPosition);
         } else {
-          console.warn('[AndroidVideoPlayer] No player ref available for resume seek');
+          logger.warn('[AndroidVideoPlayer] No player ref available for resume seek');
         }
       }, 300);
     }
@@ -969,7 +969,7 @@ const AndroidVideoPlayer: React.FC = () => {
               playerState.setIsBuffering(buf.isBuffering);
             }}
             onTracksChanged={(data) => {
-              console.log('[AndroidVideoPlayer] onTracksChanged:', data);
+              logger.log('[AndroidVideoPlayer] onTracksChanged:', data);
               if (data?.audioTracks) {
                 const formatted = data.audioTracks.map((t: any) => ({
                   id: t.id,

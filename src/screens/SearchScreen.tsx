@@ -551,7 +551,7 @@ const SearchScreen = () => {
       if (isMounted.current) setSearching(false);
     } catch (error) {
       if (isMounted.current) {
-        console.error('Live search error:', error);
+        logger.error('Live search error:', error);
         setSearching(false);
       }
     }

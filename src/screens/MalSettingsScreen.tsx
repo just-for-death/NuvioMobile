@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
@@ -81,7 +82,7 @@ const MalSettingsScreen: React.FC = () => {
         setUserProfile(null);
       }
     } catch (error) {
-      console.error('[MalSettings] Auth check failed', error);
+      logger.error('[MalSettings] Auth check failed', error);
       setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
@@ -104,7 +105,7 @@ const MalSettingsScreen: React.FC = () => {
             openAlert('Error', errorMessage);
         }
     } catch (e: any) {
-        console.error(e);
+        logger.error(e);
         openAlert('Error', `An error occurred during sign in: ${e.message || 'Unknown error'}`);
     } finally {
         setIsLoading(false);

@@ -2893,7 +2893,7 @@ export class TraktService {
 
       const endpoint = `/movies/${traktId}/comments?page=${page}&limit=${limit}`;
       const result = await this.apiRequest<TraktContentComment[]>(endpoint, 'GET');
-      // console.log(`[TraktService] Movie comments response:`, result);
+      // logger.log(`[TraktService] Movie comments response:`, result);
       return result;
     } catch (error) {
       logger.error('[TraktService] Failed to get movie comments:', error);
@@ -2921,7 +2921,7 @@ export class TraktService {
 
       const endpoint = `/shows/${traktId}/comments?page=${page}&limit=${limit}`;
       const result = await this.apiRequest<TraktContentComment[]>(endpoint, 'GET');
-      console.log(`[TraktService] Show comments response:`, result);
+      logger.log(`[TraktService] Show comments response:`, result);
       return result;
     } catch (error) {
       logger.error('[TraktService] Failed to get show comments:', error);

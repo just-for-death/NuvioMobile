@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import { mmkvStorage } from './mmkvStorage';
 import { Platform } from 'react-native';
 
@@ -59,16 +60,16 @@ class CampaignService {
         try {
             const now = Date.now();
 
-            console.log('[CampaignService] getActiveCampaign called, API URL:', CAMPAIGN_API_URL);
+            logger.log('[CampaignService] getActiveCampaign called, API URL:', CAMPAIGN_API_URL);
 
             if (this.campaignQueue.length > 0 && (now - this.lastFetch) < this.CACHE_TTL) {
-                console.log('[CampaignService] Using cached campaigns');
+                logger.log('[CampaignService] Using cached campaigns');
                 return this.getNextValidCampaign();
             }
 
             const platform = Platform.OS;
             const url = `${CAMPAIGN_API_URL}/api/campaigns/queue?platform=${platform}`;
-            console.log('[CampaignService] Fetching from:', url);
+            logger.log('[CampaignService] Fetching from:', url);
             const response = await fetch(
                 `${CAMPAIGN_API_URL}/api/campaigns/queue?platform=${platform}`,
                 {
@@ -78,7 +79,7 @@ class CampaignService {
             );
 
             if (!response.ok) {
-                console.warn('[CampaignService] Failed to fetch campaigns:', response.status);
+                logger.warn('[CampaignService] Failed to fetch campaigns:', response.status);
                 return null;
             }
 
@@ -100,17 +101,17 @@ class CampaignService {
                 }
             });
 
-            console.log('[CampaignService] Fetched campaigns:', campaigns.length, 'CAMPAIGN_API_URL:', CAMPAIGN_API_URL);
+            logger.log('[CampaignService] Fetched campaigns:', campaigns.length, 'CAMPAIGN_API_URL:', CAMPAIGN_API_URL);
 
             this.campaignQueue = campaigns;
             this.currentIndex = 0;
             this.lastFetch = now;
 
             const result = this.getNextValidCampaign();
-            console.log('[CampaignService] Next valid campaign:', result?.id, result?.type);
+            logger.log('[CampaignService] Next valid campaign:', result?.id, result?.type);
             return result;
         } catch (error) {
-            console.warn('[CampaignService] Error fetching campaigns:', error);
+            logger.warn('[CampaignService] Error fetching campaigns:', error);
             return null;
         }
     }

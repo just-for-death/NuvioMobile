@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { mmkvStorage } from '../services/mmkvStorage';
 import { settingsEmitter } from '../hooks/useSettings';
@@ -181,7 +182,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           if (theme) setCurrentThemeState(theme);
         }
       } catch (error) {
-        if (__DEV__) console.error('Failed to load themes:', error);
+        if (__DEV__) logger.error('Failed to load themes:', error);
       }
     };
     loadThemes();
@@ -241,7 +242,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       await mmkvStorage.setItem(CURRENT_THEME_KEY, id);
       // Do not emit global settings sync for themes
     } catch (error) {
-      if (__DEV__) console.error('Failed to add custom theme:', error);
+      if (__DEV__) logger.error('Failed to add custom theme:', error);
     }
   };
 
@@ -279,7 +280,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
       // Do not emit global settings sync for themes
     } catch (error) {
-      if (__DEV__) console.error('Failed to update custom theme:', error);
+      if (__DEV__) logger.error('Failed to update custom theme:', error);
     }
   };
 
@@ -316,7 +317,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
       // Do not emit global settings sync for themes
     } catch (error) {
-      if (__DEV__) console.error('Failed to delete custom theme:', error);
+      if (__DEV__) logger.error('Failed to delete custom theme:', error);
     }
   };
 

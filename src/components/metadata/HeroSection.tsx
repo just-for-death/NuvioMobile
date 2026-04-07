@@ -1581,7 +1581,7 @@ const HeroSection: React.FC<HeroSectionProps> = memo(({
   //     const timer = setTimeout(() => {
   //       const renderTime = Date.now() - startTime;
   //       if (renderTime > 100) {
-  //         console.warn(`[HeroSection] Slow render detected: ${renderTime}ms`);
+  //         logger.warn(`[HeroSection] Slow render detected: ${renderTime}ms`);
   //       }
   //     }, 0);
   //     return () => clearTimeout(timer);

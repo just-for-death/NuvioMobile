@@ -107,3 +107,11 @@ simkl-docss
 downloader.md
 server
 Deliverables 2
+
+# IDE specific
+.project
+.classpath
+.settings/
+.factorypath
+.bin/
+.out/

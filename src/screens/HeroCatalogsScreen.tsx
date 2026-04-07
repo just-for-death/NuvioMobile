@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -126,7 +127,7 @@ const HeroCatalogsScreen: React.FC = () => {
 
         setCatalogs(catalogItems);
       } catch (error) {
-        if (__DEV__) console.error('Failed to load catalogs:', error);
+        if (__DEV__) logger.error('Failed to load catalogs:', error);
         setAlertTitle(t('common.error'));
         setAlertMessage(t('home_screen.hero_catalogs.error_load'));
         setAlertActions([{ label: t('common.ok'), onPress: () => setAlertVisible(false) }]);

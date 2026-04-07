@@ -434,7 +434,7 @@ const TMDBSettingsScreen = () => {
     try {
       mmkvStorage.setItem('tmdb_settings_selected_show', show.imdbId);
     } catch (e) {
-      if (__DEV__) console.error('Error saving selected show:', e);
+      if (__DEV__) logger.error('Error saving selected show:', e);
     }
   };
 
@@ -490,7 +490,7 @@ const TMDBSettingsScreen = () => {
           }
         }
       } catch (e) {
-        if (__DEV__) console.error('Error loading selected show:', e);
+        if (__DEV__) logger.error('Error loading selected show:', e);
       }
     };
 

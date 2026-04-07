@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { NavigationContainer, DefaultTheme as NavigationDefaultTheme, DarkTheme as NavigationDarkTheme, Theme, NavigationProp } from '@react-navigation/native';
 import { createNativeStackNavigator, NativeStackNavigationOptions, NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -1232,7 +1233,7 @@ const InnerNavigator = ({ initialRouteName }: { initialRouteName?: keyof RootSta
           RNImmersiveMode.fullLayout(false);
         }
       } catch (error) {
-        console.log('Immersive mode error:', error);
+        logger.log('Immersive mode error:', error);
       }
 
       // Ensure consistent background color for Android
@@ -1922,7 +1923,7 @@ const ConditionalPostHogProvider: React.FC<{ children: React.ReactNode }> = ({ c
         await telemetryService.initialize();
         setAnalyticsEnabled(telemetryService.isAnalyticsEnabled());
       } catch (error) {
-        console.error('Failed to initialize telemetry service:', error);
+        logger.error('Failed to initialize telemetry service:', error);
         setAnalyticsEnabled(false);
       } finally {
         setIsInitialized(true);
@@ -1940,10 +1941,10 @@ const ConditionalPostHogProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (posthogRef.current) {
           if (settings.analyticsEnabled) {
             posthogRef.current.optIn();
-            console.log('[Telemetry] PostHog opted in');
+            logger.log('[Telemetry] PostHog opted in');
           } else {
             posthogRef.current.optOut();
-            console.log('[Telemetry] PostHog opted out');
+            logger.log('[Telemetry] PostHog opted out');
           }
         }
       }
@@ -1995,10 +1996,10 @@ const PostHogOptController: React.FC<{
       onPostHogReady(posthog);
       if (enabled) {
         posthog.optIn();
-        console.log('[Telemetry] PostHog opted in');
+        logger.log('[Telemetry] PostHog opted in');
       } else {
         posthog.optOut();
-        console.log('[Telemetry] PostHog opted out');
+        logger.log('[Telemetry] PostHog opted out');
       }
     }
   }, [enabled, posthog, onPostHogReady]);

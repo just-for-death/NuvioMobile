@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, { memo, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
@@ -140,7 +141,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
   const backdropSource = React.useMemo(() => {
     // Debug logging
     if (__DEV__) {
-      console.log('[TabletStreamsLayout] Backdrop source selection:', {
+      logger.log('[TabletStreamsLayout] Backdrop source selection:', {
         episodeImage,
         bannerImage,
         metadataPoster: metadata?.poster,
@@ -151,28 +152,28 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
 
     // If episodeImage failed to load, skip it and use backdrop
     if (backdropError && episodeImage && episodeImage !== metadata?.poster) {
-      if (__DEV__) console.log('[TabletStreamsLayout] Episode thumbnail failed, falling back to backdrop');
+      if (__DEV__) logger.log('[TabletStreamsLayout] Episode thumbnail failed, falling back to backdrop');
       if (bannerImage) {
-        if (__DEV__) console.log('[TabletStreamsLayout] Using show backdrop (episode failed):', bannerImage);
+        if (__DEV__) logger.log('[TabletStreamsLayout] Using show backdrop (episode failed):', bannerImage);
         return { uri: bannerImage };
       }
     }
 
     // If episodeImage exists and is not the same as poster, use it (real episode thumbnail)
     if (episodeImage && episodeImage !== metadata?.poster && !backdropError) {
-      if (__DEV__) console.log('[TabletStreamsLayout] Using episode thumbnail:', episodeImage);
+      if (__DEV__) logger.log('[TabletStreamsLayout] Using episode thumbnail:', episodeImage);
       return { uri: episodeImage };
     }
 
     // If episodeImage is the same as poster (fallback case), prioritize backdrop
     if (bannerImage) {
-      if (__DEV__) console.log('[TabletStreamsLayout] Using show backdrop:', bannerImage);
+      if (__DEV__) logger.log('[TabletStreamsLayout] Using show backdrop:', bannerImage);
       return { uri: bannerImage };
     }
 
     // No fallback to poster images
 
-    if (__DEV__) console.log('[TabletStreamsLayout] No backdrop source found');
+    if (__DEV__) logger.log('[TabletStreamsLayout] No backdrop source found');
     return undefined;
   }, [episodeImage, bannerImage, metadata?.poster, backdropError]);
 
@@ -292,7 +293,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
   };
 
   const handleBackdropError = () => {
-    if (__DEV__) console.log('[TabletStreamsLayout] Backdrop image failed to load:', backdropSource?.uri);
+    if (__DEV__) logger.log('[TabletStreamsLayout] Backdrop image failed to load:', backdropSource?.uri);
     setBackdropError(true);
     setBackdropLoaded(false);
   };

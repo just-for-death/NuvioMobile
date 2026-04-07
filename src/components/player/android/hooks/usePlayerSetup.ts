@@ -49,7 +49,7 @@ export const usePlayerSetup = (
                     RNImmersiveMode.setBarTranslucent(true);
                     RNImmersiveMode.fullLayout(true);
                 } catch (e) {
-                    console.warn('[usePlayerSetup] RNImmersiveMode failed:', e);
+                    logger.warn('[usePlayerSetup] RNImmersiveMode failed:', e);
                 }
             }
             StatusBar.setHidden(true, 'none');

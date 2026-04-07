@@ -1,3 +1,4 @@
+import { logger } from "../../utils/logger";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../contexts/ToastContext';
@@ -326,7 +327,7 @@ const ContentItem = ({ item, onPress, shouldLoadImage: shouldLoadImageProp, defe
                   setImageError(false);
                 }}
                 onError={() => {
-                  if (__DEV__) console.warn('Image load error for:', item.poster);
+                  if (__DEV__) logger.warn('Image load error for:', item.poster);
                   setImageError(true);
                 }}
               />

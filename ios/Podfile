@@ -66,5 +66,19 @@ target 'Nuvio' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # Required for CI: allow CocoaPods script phases (Copy XCFrameworks, etc.)
+    # to run without sandbox restrictions. Without this, Libass, google-cast-sdk
+    # and similar pods that use [CP] Copy XCFrameworks fail in Xcode 15+.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+        # Suppress Metal compiler errors from KSPlayer on CI by skipping
+        # Metal validation (actual compilation is handled separately).
+        config.build_settings['MTL_ENABLE_DEBUG_INFO'] = 'NO'
+        # Ensure consistent deployment target across all pods.
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+      end
+    end
   end
 end

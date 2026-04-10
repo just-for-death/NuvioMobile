@@ -41,9 +41,17 @@ workflows:
 
           pod install
 
+      - name: Download Metal Toolchain
+        script: |
+          # KSPlayer includes Metal shaders; the Metal compiler toolchain is not
+          # installed by default on Codemagic Mac mini instances.
+          xcodebuild -downloadComponent MetalToolchain || true
+
       - name: Build Archive (Unsigned)
         script: |
           set -e
+          mkdir -p /tmp/xcodebuild_logs
+
           xcodebuild archive \
             -workspace "$XCODE_WORKSPACE" \
             -scheme "$XCODE_SCHEME" \
@@ -55,6 +63,9 @@ workflows:
             CODE_SIGN_IDENTITY="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            MTL_ENABLE_DEBUG_INFO=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            2>&1 | tee /tmp/xcodebuild_logs/archive.log \
             | xcpretty --utf --color && exit ${PIPESTATUS[0]}
 
       - name: Package Unsigned IPA

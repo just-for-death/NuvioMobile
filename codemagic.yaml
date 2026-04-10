@@ -30,30 +30,17 @@ workflows:
           set -e
           npm install --legacy-peer-deps
 
-      - name: Clone KSPlayer (pinned to v1.1.0)
+      - name: Clone KSPlayer
         script: |
           set -e
-          # Clone KSPlayer at the exact tag matching Podfile.lock (v1.1.0).
-          # This tag has DisplayCriteria.podspec; newer main commits removed it.
-          KSPLAYER_TAG="1.1.0"
-
-          # If cache is missing or DisplayCriteria.podspec is absent, re-clone.
-          if [ ! -d "../KSPlayer" ] || [ ! -f "../KSPlayer/DisplayCriteria.podspec" ]; then
-            echo "KSPlayer cache invalid or missing DisplayCriteria.podspec — cloning tag $KSPLAYER_TAG..."
-            rm -rf ../KSPlayer
-            git clone --depth 1 --branch "$KSPLAYER_TAG" \
-              https://github.com/kingslay/KSPlayer.git ../KSPlayer
+          if [ ! -d "../KSPlayer" ]; then
+            echo "KSPlayer not found in cache — cloning..."
+            git clone --depth 1 https://github.com/kingslay/KSPlayer.git ../KSPlayer
           else
-            echo "KSPlayer v$KSPLAYER_TAG found in cache with DisplayCriteria.podspec — skipping clone."
+            echo "KSPlayer found in cache — skipping clone."
           fi
-
-          # Fail fast with a clear error rather than a confusing CocoaPods message.
-          if [ ! -f "../KSPlayer/DisplayCriteria.podspec" ]; then
-            echo "ERROR: DisplayCriteria.podspec still missing after clone!"
-            ls ../KSPlayer/*.podspec 2>/dev/null || echo "No .podspec files found in ../KSPlayer"
-            exit 1
-          fi
-          echo "Verified: DisplayCriteria.podspec present."
+          echo "KSPlayer contents:"
+          ls ../KSPlayer/*.podspec 2>/dev/null || echo "(no .podspec files at root)"
 
       - name: Install CocoaPods
         script: |

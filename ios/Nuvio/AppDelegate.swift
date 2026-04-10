@@ -49,6 +49,16 @@ public class AppDelegate: ExpoAppDelegate {
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
+  // Background URL session — must live on UIApplicationDelegate so iOS can
+  // route wake-from-background events to RNBackgroundDownloader correctly.
+  public override func application(
+    _ application: UIApplication,
+    handleEventsForBackgroundURLSession identifier: String,
+    completionHandler: @escaping () -> Void
+  ) {
+    RNBackgroundDownloader.setCompletionHandlerWithIdentifier(identifier, completionHandler: completionHandler)
+  }
+
   // Linking API
   public override func application(
     _ app: UIApplication,
@@ -85,12 +95,5 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
 #endif
   }
 
-  func application(
-    _ application: UIApplication,
-    handleEventsForBackgroundURLSession identifier: String,
-    completionHandler: @escaping () -> Void
-  ) {
-    RNBackgroundDownloader.setCompletionHandlerWithIdentifier(identifier, completionHandler: completionHandler)
-  }
 
 }

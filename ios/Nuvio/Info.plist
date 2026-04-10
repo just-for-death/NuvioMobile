@@ -49,8 +49,6 @@
 		<string>open-vidhub</string>
 		<string>livecontainer</string>
 	</array>
-	<key>LSMinimumSystemVersion</key>
-	<string>12.0</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>

@@ -33,23 +33,36 @@ workflows:
       - name: Clone KSPlayer (shallow, cached)
         script: |
           set -e
+          # Pin to the exact commit that matches Podfile.lock to ensure
+          # DisplayCriteria.podspec is present (removed in newer main commits).
+          KSPLAYER_COMMIT="f163ac6195f240b6fa5b8225aeb39ec811a70c62"
           if [ ! -d "../KSPlayer" ]; then
-            echo "KSPlayer not found in cache — cloning..."
-            git clone --depth 1 https://github.com/kingslay/KSPlayer.git ../KSPlayer
+            echo "KSPlayer not found in cache — cloning at pinned commit..."
+            git clone https://github.com/kingslay/KSPlayer.git ../KSPlayer
+            git -C ../KSPlayer checkout "$KSPLAYER_COMMIT"
           else
-            echo "KSPlayer found in cache — skipping clone."
+            # Verify cache is on the correct commit; reset if drifted
+            CURRENT=$(git -C ../KSPlayer rev-parse HEAD 2>/dev/null || echo "unknown")
+            if [ "$CURRENT" != "$KSPLAYER_COMMIT" ]; then
+              echo "Cached KSPlayer is on wrong commit ($CURRENT). Resetting..."
+              git -C ../KSPlayer fetch origin
+              git -C ../KSPlayer checkout "$KSPLAYER_COMMIT"
+            else
+              echo "KSPlayer found in cache at correct commit — skipping clone."
+            fi
           fi
 
-      - name: Install CocoaPods (hard clean)
+      - name: Install CocoaPods
         script: |
           set -e
           cd ios
 
-          # Hard-clean to guarantee a fresh module map (avoids Sentry SwiftCompile failures)
+          # Deintegrate to clear stale linkage, but KEEP Podfile.lock so
+          # CocoaPods resolves the exact same pod versions without drifting
+          # to a newer KSPlayer that dropped DisplayCriteria.podspec.
           pod deintegrate || true
-          rm -f Podfile.lock
 
-          pod install --repo-update
+          pod install
 
       - name: Build Archive (Unsigned)
         script: |

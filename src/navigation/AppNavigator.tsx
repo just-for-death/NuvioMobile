@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { NavigationContainer, DefaultTheme as NavigationDefaultTheme, DarkTheme as NavigationDarkTheme, Theme, NavigationProp } from '@react-navigation/native';
 import { createNativeStackNavigator, NativeStackNavigationOptions, NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,7 +19,6 @@ import { PostHogProvider, usePostHog } from 'posthog-react-native';
 import { ScrollToTopProvider, useScrollToTopEmitter } from '../contexts/ScrollToTopContext';
 import { telemetryService, TELEMETRY_EVENTS } from '../services/telemetryService';
 import { useTranslation } from 'react-i18next';
-import { useSettings } from '../hooks/useSettings';
 
 // Optional iOS Glass effect (expo-glass-effect) with safe fallback
 let GlassViewComp: any = null;
@@ -540,7 +538,7 @@ const TabScreenWrapper: React.FC<{ children: React.ReactNode }> = ({ children })
     }}>
       {/* Reserve consistent space for the header area on all screens */}
       <View style={{
-        height: isTablet ? (insets.top + 64) : (Platform.OS === 'android' ? 80 : Math.max(90, insets.top + 50)),
+        height: isTablet ? (insets.top + 64) : (Platform.OS === 'android' ? 80 : 60),
         width: '100%',
         backgroundColor: colors.darkBackground,
         position: 'absolute',
@@ -567,7 +565,9 @@ const WrappedScreen: React.FC<{ Screen: React.ComponentType<any> }> = ({ Screen 
 const MainTabs = () => {
   const { t } = useTranslation();
   const { currentTheme } = useTheme();
-  const { settings, isLoaded } = useSettings();
+  const { settings } = require('../hooks/useSettings');
+  const { useSettings: useSettingsHook } = require('../hooks/useSettings');
+  const { settings: appSettings } = useSettingsHook();
   const [hasUpdateBadge, setHasUpdateBadge] = React.useState(false);
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
   const lastTapRef = useRef<Record<string, number>>({});
@@ -772,7 +772,7 @@ const MainTabs = () => {
         bottom: 0,
         left: 0,
         right: 0,
-        height: Platform.OS === 'android' ? 70 : 64 + insets.bottom,
+        height: Platform.OS === 'android' ? 70 : 85 + insets.bottom,
         backgroundColor: 'transparent',
         overflow: 'hidden',
       }}>
@@ -822,7 +822,7 @@ const MainTabs = () => {
         <View
           style={{
             height: '100%',
-            paddingBottom: Platform.OS === 'android' ? 15 : insets.bottom,
+            paddingBottom: Platform.OS === 'android' ? 15 : 20 + insets.bottom,
             paddingTop: Platform.OS === 'android' ? 8 : 12,
             backgroundColor: 'transparent',
           }}
@@ -932,7 +932,7 @@ const MainTabs = () => {
     // Dynamically require to avoid impacting Android bundle
     const { createNativeBottomTabNavigator } = require('@bottom-tabs/react-navigation');
     const IOSTab = createNativeBottomTabNavigator();
-    const downloadsEnabled = settings?.enableDownloads !== false;
+    const downloadsEnabled = appSettings?.enableDownloads !== false;
 
     return (
       <View style={{ flex: 1, backgroundColor: currentTheme.colors.darkBackground }}>
@@ -1164,7 +1164,7 @@ const MainTabs = () => {
             },
           }}
         />
-        {settings?.enableDownloads !== false && (
+        {appSettings?.enableDownloads !== false && (
           <Tab.Screen
             name="Downloads"
             component={DownloadsScreen}
@@ -1233,7 +1233,7 @@ const InnerNavigator = ({ initialRouteName }: { initialRouteName?: keyof RootSta
           RNImmersiveMode.fullLayout(false);
         }
       } catch (error) {
-        logger.log('Immersive mode error:', error);
+        console.log('Immersive mode error:', error);
       }
 
       // Ensure consistent background color for Android
@@ -1923,7 +1923,7 @@ const ConditionalPostHogProvider: React.FC<{ children: React.ReactNode }> = ({ c
         await telemetryService.initialize();
         setAnalyticsEnabled(telemetryService.isAnalyticsEnabled());
       } catch (error) {
-        logger.error('Failed to initialize telemetry service:', error);
+        console.error('Failed to initialize telemetry service:', error);
         setAnalyticsEnabled(false);
       } finally {
         setIsInitialized(true);
@@ -1941,10 +1941,8 @@ const ConditionalPostHogProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (posthogRef.current) {
           if (settings.analyticsEnabled) {
             posthogRef.current.optIn();
-            logger.log('[Telemetry] PostHog opted in');
           } else {
             posthogRef.current.optOut();
-            logger.log('[Telemetry] PostHog opted out');
           }
         }
       }
@@ -1996,10 +1994,8 @@ const PostHogOptController: React.FC<{
       onPostHogReady(posthog);
       if (enabled) {
         posthog.optIn();
-        logger.log('[Telemetry] PostHog opted in');
       } else {
         posthog.optOut();
-        logger.log('[Telemetry] PostHog opted out');
       }
     }
   }, [enabled, posthog, onPostHogReady]);

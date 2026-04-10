@@ -1,4 +1,3 @@
-import { logger } from "../../utils/logger";
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -108,7 +107,7 @@ export const CastDetailsModal: React.FC<CastDetailsModalProps> = ({
       setPersonDetails(details);
       setHasFetched(true);
     } catch (error) {
-      if (__DEV__) logger.error('Error fetching person details:', error);
+      if (__DEV__) console.error('Error fetching person details:', error);
     } finally {
       setLoading(false);
     }

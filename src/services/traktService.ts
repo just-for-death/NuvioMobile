@@ -17,6 +17,11 @@ if (!TRAKT_CLIENT_ID || !TRAKT_CLIENT_SECRET) {
   logger.warn('[TraktService] Missing Trakt env vars. Trakt integration will be disabled.');
 }
 
+// Trakt API scrobble threshold — hardcoded per API spec.
+// /scrobble/stop with progress >= 80% → scrobble (marks watched).
+// /scrobble/stop with progress 1-79% → pause (saves playback progress).
+const TRAKT_SCROBBLE_THRESHOLD = 80;
+
 // Types
 export interface TraktUser {
   username: string;
@@ -690,9 +695,13 @@ export class TraktService {
     const now = Date.now();
     let cleanupCount = 0;
 
-    // Remove stop calls older than the debounce window
+    // Retain stop records for 5 minutes so the restart-prevention guard in
+    // scrobbleStart() has time to work. The old value was STOP_DEBOUNCE_MS (1s),
+    // which meant every 15-minute cleanup tick wiped all stop records immediately,
+    // completely defeating the 30s restart window.
+    const STOP_RETENTION_MS = 5 * 60 * 1000;
     for (const [key, timestamp] of this.lastStopCalls.entries()) {
-      if (now - timestamp > this.STOP_DEBOUNCE_MS) {
+      if (now - timestamp > STOP_RETENTION_MS) {
         this.lastStopCalls.delete(key);
         cleanupCount++;
       }
@@ -1155,17 +1164,19 @@ export class TraktService {
   }
 
 
-  public async isMovieWatchedAccurate(imdbId: string): Promise<boolean> {
+  public async isMovieWatchedAccurate(imdbId: string, fallbackImdbId?: string): Promise<boolean> {
     try {
-      const imdb = imdbId.startsWith('tt')
-        ? imdbId
-        : `tt${imdbId}`;
+      const normalise = (id: string) => id.startsWith('tt') ? id : `tt${id}`;
+      const imdb = normalise(imdbId);
+      const fallback = fallbackImdbId && fallbackImdbId !== imdbId && fallbackImdbId.trim()
+        ? normalise(fallbackImdbId)
+        : null;
 
       const movies = await this.apiRequest<any[]>('/sync/watched/movies');
       const moviesArray = Array.isArray(movies) ? movies : [];
 
       return moviesArray.some(
-        (m: any) => m.movie?.ids?.imdb === imdb
+        (m: any) => m.movie?.ids?.imdb === imdb || (fallback && m.movie?.ids?.imdb === fallback)
       );
     } catch (err) {
       logger.warn('[TraktService] Movie watched check failed', err);
@@ -1176,14 +1187,20 @@ export class TraktService {
   public async isEpisodeWatchedAccurate(
     showImdbId: string,
     season: number,
-    episode: number
+    episode: number,
+    fallbackImdbId?: string
   ): Promise<boolean> {
     try {
       if (season === 0) return false;
 
-      const imdb = showImdbId.startsWith('tt')
-        ? showImdbId
-        : `tt${showImdbId}`;
+      const normalise = (id: string) => id.startsWith('tt') ? id : `tt${id}`;
+      const isRealImdbId = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+
+      // Use fallback if primary isn't a real IMDb ID
+      const resolvedId = isRealImdbId(showImdbId) ? showImdbId
+        : (fallbackImdbId && isRealImdbId(fallbackImdbId) ? fallbackImdbId : showImdbId);
+
+      const imdb = normalise(resolvedId);
 
       const watchedShows = await this.apiRequest<any[]>(
         '/sync/watched/shows'
@@ -1388,7 +1405,9 @@ export class TraktService {
    */
   public async getPlaybackProgressWithImages(type?: 'movies' | 'shows'): Promise<TraktPlaybackItem[]> {
     try {
-      const endpoint = type ? `/sync/playback/${type}?extended=images` : '/sync/playback?extended=images';
+      // extended=full,images so we receive episode.first_aired (needed for the new-episode priority boost
+    // in mergeTraktContinueWatching.ts — brand-new/recently-aired episodes now jump to the top of Continue Watching).
+      const endpoint = type ? `/sync/playback/${type}?extended=full,images` : '/sync/playback?extended=full,images';
       return this.apiRequest<TraktPlaybackItem[]>(endpoint);
     } catch (error) {
       logger.error('[TraktService] Failed to get playback progress with images:', error);
@@ -1521,16 +1540,25 @@ export class TraktService {
     imdbId: string,
     season: number,
     episode: number,
-    watchedAt: Date = new Date()
+    watchedAt: Date = new Date(),
+    fallbackImdbId?: string
   ): Promise<boolean> {
     try {
-      const traktId = await this.getTraktIdFromImdbId(imdbId, 'show');
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+      const resolvedId = isImdbFormat(imdbId) ? imdbId
+        : (fallbackImdbId && isImdbFormat(fallbackImdbId) ? fallbackImdbId : imdbId);
+
+      if (resolvedId !== imdbId) {
+        logger.log(`[TraktService] addToWatchedEpisodes: falling back from "${imdbId}" to "${resolvedId}"`);
+      }
+
+      const traktId = await this.getTraktIdFromImdbId(resolvedId, 'show');
       if (!traktId) {
-        logger.warn(`[TraktService] Could not find Trakt ID for show: ${imdbId}`);
+        logger.warn(`[TraktService] Could not find Trakt ID for show: ${resolvedId}`);
         return false;
       }
 
-      logger.log(`[TraktService] Marking S${season}E${episode} as watched for show ${imdbId} (trakt: ${traktId})`);
+      logger.log(`[TraktService] Marking S${season}E${episode} as watched for show ${resolvedId} (trakt: ${traktId})`);
 
       // Use shows array with seasons/episodes structure per Trakt API docs
       await this.apiRequest('/sync/history', 'POST', {
@@ -1570,16 +1598,22 @@ export class TraktService {
   public async markSeasonAsWatched(
     imdbId: string,
     season: number,
-    watchedAt: Date = new Date()
+    watchedAt: Date = new Date(),
+    fallbackImdbId?: string
   ): Promise<boolean> {
     try {
-      const traktId = await this.getTraktIdFromImdbId(imdbId, 'show');
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+      const resolvedId = isImdbFormat(imdbId) ? imdbId
+        : (fallbackImdbId && isImdbFormat(fallbackImdbId) ? fallbackImdbId : imdbId);
+      if (resolvedId !== imdbId) logger.log(`[TraktService] markSeasonAsWatched: falling back from "${imdbId}" to "${resolvedId}"`);
+
+      const traktId = await this.getTraktIdFromImdbId(resolvedId, 'show');
       if (!traktId) {
-        logger.warn(`[TraktService] Could not find Trakt ID for show: ${imdbId}`);
+        logger.warn(`[TraktService] Could not find Trakt ID for show: ${resolvedId}`);
         return false;
       }
 
-      logger.log(`[TraktService] Marking entire season ${season} as watched for show ${imdbId} (trakt: ${traktId})`);
+      logger.log(`[TraktService] Marking entire season ${season} as watched for show ${resolvedId} (trakt: ${traktId})`);
 
       // Mark entire season - Trakt will mark all episodes in the season
       await this.apiRequest('/sync/history', 'POST', {
@@ -1614,7 +1648,8 @@ export class TraktService {
   public async markEpisodesAsWatched(
     imdbId: string,
     episodes: Array<{ season: number; episode: number }>,
-    watchedAt: Date = new Date()
+    watchedAt: Date = new Date(),
+    fallbackImdbId?: string
   ): Promise<boolean> {
     try {
       if (episodes.length === 0) {
@@ -1622,13 +1657,18 @@ export class TraktService {
         return false;
       }
 
-      const traktId = await this.getTraktIdFromImdbId(imdbId, 'show');
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+      const resolvedId = isImdbFormat(imdbId) ? imdbId
+        : (fallbackImdbId && isImdbFormat(fallbackImdbId) ? fallbackImdbId : imdbId);
+      if (resolvedId !== imdbId) logger.log(`[TraktService] markEpisodesAsWatched: falling back from "${imdbId}" to "${resolvedId}"`);
+
+      const traktId = await this.getTraktIdFromImdbId(resolvedId, 'show');
       if (!traktId) {
-        logger.warn(`[TraktService] Could not find Trakt ID for show: ${imdbId}`);
+        logger.warn(`[TraktService] Could not find Trakt ID for show: ${resolvedId}`);
         return false;
       }
 
-      logger.log(`[TraktService] Marking ${episodes.length} episodes as watched for show ${imdbId}`);
+      logger.log(`[TraktService] Marking ${episodes.length} episodes as watched for show ${resolvedId}`);
 
       // Group episodes by season for the API call
       const seasonMap = new Map<number, Array<{ number: number; watched_at: string }>>();
@@ -1709,12 +1749,18 @@ export class TraktService {
    */
   public async removeSeasonFromHistory(
     imdbId: string,
-    season: number
+    season: number,
+    fallbackImdbId?: string
   ): Promise<boolean> {
     try {
       logger.log(`[TraktService] Removing season ${season} from history for show: ${imdbId}`);
 
-      const fullImdbId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+      const resolvedId = (!isImdbFormat(imdbId) && fallbackImdbId && isImdbFormat(fallbackImdbId))
+        ? fallbackImdbId
+        : imdbId;
+
+      const fullImdbId = resolvedId.startsWith('tt') ? resolvedId : `tt${resolvedId}`;
 
       const payload: TraktHistoryRemovePayload = {
         shows: [
@@ -1734,6 +1780,19 @@ export class TraktService {
       logger.log(`[TraktService] Sending removeSeasonFromHistory payload:`, JSON.stringify(payload, null, 2));
 
       const result = await this.removeFromHistory(payload);
+
+      if ((result === null || result.deleted.episodes === 0) && fallbackImdbId && fallbackImdbId !== resolvedId && isImdbFormat(fallbackImdbId)) {
+        logger.log(`[TraktService] removeSeasonFromHistory: retrying with fallback ID "${fallbackImdbId}"`);
+        const fb = fallbackImdbId.startsWith('tt') ? fallbackImdbId : `tt${fallbackImdbId}`;
+        const fallbackResult = await this.removeFromHistory({
+          shows: [{ ids: { imdb: fb }, seasons: [{ number: season }] }]
+        });
+        if (fallbackResult) {
+          logger.log(`[TraktService] Season removal success via fallback: ${fallbackResult.deleted.episodes} episodes deleted`);
+          return fallbackResult.deleted.episodes > 0;
+        }
+        return false;
+      }
 
       if (result) {
         const success = result.deleted.episodes > 0;
@@ -1817,21 +1876,24 @@ export class TraktService {
    */
   public async startWatching(contentData: TraktContentData, progress: number): Promise<TraktScrobbleResponse | null> {
     try {
-      // Validate content data before making API call
       const validation = this.validateContentData(contentData);
       if (!validation.isValid) {
-        logger.error('[TraktService] Invalid content data for start watching:', validation.errors);
+        console.log('[TraktService] /scrobble/start INVALID content:', validation.errors);
         return null;
       }
 
       const payload = await this.buildScrobblePayload(contentData, progress);
       if (!payload) {
+        console.log('[TraktService] /scrobble/start payload is null');
         return null;
       }
 
-      return this.apiRequest<TraktScrobbleResponse>('/scrobble/start', 'POST', payload);
+      console.log('[TraktService] /scrobble/start PAYLOAD:', JSON.stringify(payload));
+      const response = await this.apiRequest<TraktScrobbleResponse>('/scrobble/start', 'POST', payload);
+      console.log('[TraktService] /scrobble/start RESPONSE:', JSON.stringify(response));
+      return response;
     } catch (error) {
-      logger.error('[TraktService] Failed to start watching:', error);
+      console.log('[TraktService] /scrobble/start ERROR:', error);
       return null;
     }
   }
@@ -1873,21 +1935,24 @@ export class TraktService {
    */
   public async stopWatching(contentData: TraktContentData, progress: number): Promise<TraktScrobbleResponse | null> {
     try {
-      // Validate content data before making API call
       const validation = this.validateContentData(contentData);
       if (!validation.isValid) {
-        logger.error('[TraktService] Invalid content data for stop watching:', validation.errors);
+        console.log('[TraktService] /scrobble/stop INVALID content:', validation.errors);
         return null;
       }
 
       const payload = await this.buildScrobblePayload(contentData, progress);
       if (!payload) {
+        console.log('[TraktService] /scrobble/stop payload is null');
         return null;
       }
 
-      return this.apiRequest<TraktScrobbleResponse>('/scrobble/stop', 'POST', payload);
+      console.log('[TraktService] /scrobble/stop PAYLOAD:', JSON.stringify(payload));
+      const response = await this.apiRequest<TraktScrobbleResponse>('/scrobble/stop', 'POST', payload);
+      console.log('[TraktService] /scrobble/stop RESPONSE:', JSON.stringify(response));
+      return response;
     } catch (error) {
-      logger.error('[TraktService] Failed to stop watching:', error);
+      console.log('[TraktService] /scrobble/stop ERROR:', error);
       return null;
     }
   }
@@ -1902,7 +1967,11 @@ export class TraktService {
   }
 
   /**
-   * Validate content data before making API calls
+   * Validate content data before making API calls.
+   *
+   * IMDb ID validation is intentionally lenient: a non-IMDb provider ID (e.g. "kitsu:123")
+   * is allowed through with a warning. Trakt can still scrobble via title + season/episode.
+   * A truly empty ID is still blocked.
    */
   private validateContentData(contentData: TraktContentData): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
@@ -1915,8 +1984,11 @@ export class TraktService {
       errors.push('Missing or empty title');
     }
 
+    // Block only truly empty IDs — non-IMDb provider IDs are allowed (warn, don't fail)
     if (!contentData.imdbId || contentData.imdbId.trim() === '') {
       errors.push('Missing or empty IMDb ID');
+    } else if (!/^tt\d+$/.test(contentData.imdbId) && !/^\d{7,}$/.test(contentData.imdbId)) {
+      logger.warn(`[TraktService] imdbId "${contentData.imdbId}" is not a standard IMDb ID — Trakt will match by title/season/episode`);
     }
 
     if (contentData.type === 'episode') {
@@ -1929,8 +2001,11 @@ export class TraktService {
       if (!contentData.showTitle || contentData.showTitle.trim() === '') {
         errors.push('Missing or empty show title');
       }
-      if (!contentData.showYear || contentData.showYear < 1900) {
-        errors.push('Invalid show year');
+      // showYear is intentionally not required — Trakt can match episodes by
+      // show title + season + episode number alone. Anime and many non-Western
+      // shows often have year=0 or missing; blocking scrobble for them is wrong.
+      if (contentData.showYear !== undefined && contentData.showYear > 0 && contentData.showYear < 1900) {
+        logger.warn(`[TraktService] showYear ${contentData.showYear} looks invalid, omitting from payload`);
       }
     }
 
@@ -1991,18 +2066,24 @@ export class TraktService {
           return null;
         }
 
-        // Ensure IMDb ID includes the 'tt' prefix for Trakt scrobble payloads
-        const imdbIdWithPrefix = contentData.imdbId.startsWith('tt')
-          ? contentData.imdbId
-          : `tt${contentData.imdbId}`;
+        const isRealImdbId = /^tt\d+$/.test(contentData.imdbId) || /^\d{7,}$/.test(contentData.imdbId);
 
         // Build movie payload - only include year if valid
-        const movieData: { title: string; year?: number; ids: { imdb: string } } = {
+        const movieData: { title: string; year?: number; ids: { imdb?: string } } = {
           title: contentData.title.trim(),
-          ids: {
-            imdb: imdbIdWithPrefix
-          }
+          ids: {}
         };
+
+        // Only add IMDb ID to payload when it's a real IMDb format — sending a provider ID
+        // (e.g. "kitsu:123") causes Trakt to fail the lookup. Without it, Trakt matches by title.
+        if (isRealImdbId) {
+          const imdbIdWithPrefix = contentData.imdbId.startsWith('tt')
+            ? contentData.imdbId
+            : `tt${contentData.imdbId}`;
+          (movieData.ids as any).imdb = imdbIdWithPrefix;
+        } else {
+          logger.warn(`[TraktService] Movie imdbId "${contentData.imdbId}" is not IMDb format — omitting from scrobble payload, Trakt will match by title`);
+        }
 
         // Only add year if it's valid (prevents year: 0 or invalid years)
         if (isValidYear(contentData.year)) {
@@ -2067,12 +2148,17 @@ export class TraktService {
           progress: clampedProgress
         };
 
-        // Add show IMDB ID if available
+        // Add show IMDB ID if available and valid IMDb format
         if (contentData.showImdbId && contentData.showImdbId.trim() !== '') {
-          const showImdbWithPrefix = contentData.showImdbId.startsWith('tt')
-            ? contentData.showImdbId
-            : `tt${contentData.showImdbId}`;
-          payload.show.ids.imdb = showImdbWithPrefix;
+          const isRealShowImdbId = /^tt\d+$/.test(contentData.showImdbId) || /^\d{7,}$/.test(contentData.showImdbId);
+          if (isRealShowImdbId) {
+            const showImdbWithPrefix = contentData.showImdbId.startsWith('tt')
+              ? contentData.showImdbId
+              : `tt${contentData.showImdbId}`;
+            payload.show.ids.imdb = showImdbWithPrefix;
+          } else {
+            logger.warn(`[TraktService] showImdbId "${contentData.showImdbId}" is not IMDb format — omitting from scrobble payload, Trakt will match by title`);
+          }
         }
 
         // Add episode IMDB ID if available (for specific episode IDs)
@@ -2164,31 +2250,28 @@ export class TraktService {
   public async scrobbleStart(contentData: TraktContentData, progress: number): Promise<boolean> {
     try {
       if (!await this.isAuthenticated()) {
+        console.log('[TraktService] scrobbleStart: not authenticated');
         return false;
       }
 
       const watchingKey = this.getWatchingKey(contentData);
+      console.log(`[TraktService] scrobbleStart: key=${watchingKey} recentlyScrobbled=${this.isRecentlyScrobbled(contentData)} scrobbled=${this.scrobbledItems.has(watchingKey)} currentlyWatching=${this.currentlyWatching.has(watchingKey)}`);
 
-      // Check if this content was recently scrobbled (to prevent duplicates from component remounts)
       if (this.isRecentlyScrobbled(contentData)) {
-        logger.log(`[TraktService] Content was recently scrobbled, skipping start: ${contentData.title}`);
+        console.log(`[TraktService] scrobbleStart BLOCKED: recently scrobbled`);
         return true;
       }
 
-      // ENHANCED PROTECTION: Check if we recently stopped this content with high progress
-      // This prevents restarting sessions for content that was just completed
-      const lastStopTime = this.lastStopCalls.get(watchingKey);
-      if (lastStopTime && (Date.now() - lastStopTime) < 30000) { // 30 seconds
-        logger.log(`[TraktService] Recently stopped this content (${((Date.now() - lastStopTime) / 1000).toFixed(1)}s ago), preventing restart: ${contentData.title}`);
-        return true;
+      if (this.scrobbledItems.has(watchingKey)) {
+        const scrobbledTime = this.scrobbledTimestamps.get(watchingKey);
+        if (scrobbledTime && (Date.now() - scrobbledTime) < 30000) {
+          console.log(`[TraktService] scrobbleStart BLOCKED: scrobbled ${((Date.now() - scrobbledTime) / 1000).toFixed(1)}s ago`);
+          return true;
+        }
       }
 
-      // Debug log removed to reduce terminal noise
-
-      // Only start if not already watching this content
       if (this.currentlyWatching.has(watchingKey)) {
-        logger.log(`[TraktService] Already watching this content, skipping start: ${contentData.title}`);
-        return true; // Already started
+        this.currentlyWatching.delete(watchingKey);
       }
 
       const result = await this.queueRequest(async () => {
@@ -2197,13 +2280,14 @@ export class TraktService {
 
       if (result) {
         this.currentlyWatching.add(watchingKey);
-        logger.log(`[TraktService] Started watching ${contentData.type}: ${contentData.title}`);
+        console.log(`[TraktService] scrobbleStart SUCCESS: ${contentData.title}`);
         return true;
       }
 
+      console.log(`[TraktService] scrobbleStart FAILED: result was null`);
       return false;
     } catch (error) {
-      logger.error('[TraktService] Failed to start scrobbling:', error);
+      console.log('[TraktService] scrobbleStart ERROR:', error);
       return false;
     }
   }
@@ -2252,7 +2336,11 @@ export class TraktService {
   }
 
   /**
-   * Stop watching content (use when playback ends or stops)
+   * Stop watching content (use when playback ends, pauses, or stops)
+   * Always sends /scrobble/stop — Trakt API automatically handles:
+   *   - progress >= 80% → scrobble (marks as watched)
+   *   - progress 1-79% → pause (saves playback progress)
+   *   - progress < 1% → 422 ignored
    */
   public async scrobbleStop(contentData: TraktContentData, progress: number): Promise<boolean> {
     try {
@@ -2263,52 +2351,48 @@ export class TraktService {
       const watchingKey = this.getWatchingKey(contentData);
       const now = Date.now();
 
-      // IMMEDIATE SYNC: Reduce debouncing for instant sync, only prevent truly duplicate calls (< 1 second)
+      if (this.isRecentlyScrobbled(contentData)) {
+        logger.log(`[TraktService] Already scrobbled, skipping stop: ${contentData.title}`);
+        return true;
+      }
+
+      // Prevent truly duplicate calls (< 1 second)
       const lastStopTime = this.lastStopCalls.get(watchingKey);
       if (lastStopTime && (now - lastStopTime) < 1000) {
         logger.log(`[TraktService] Ignoring duplicate stop call for ${contentData.title} (last stop ${((now - lastStopTime) / 1000).toFixed(1)}s ago)`);
-        return true; // Return success to avoid error handling
+        return true;
       }
 
-      // Record this stop attempt
       this.lastStopCalls.set(watchingKey, now);
 
-      // Use pause if below user threshold, stop only when ready to scrobble
-      const useStop = progress >= this.completionThreshold;
+      // Always use /scrobble/stop — Trakt decides pause vs scrobble based on progress
       const result = await this.queueRequest(async () => {
-        return useStop
-          ? await this.stopWatching(contentData, progress)
-          : await this.pauseWatching(contentData, progress);
+        return await this.stopWatching(contentData, progress);
       });
 
       if (result) {
         this.currentlyWatching.delete(watchingKey);
 
-        // Mark as scrobbled if >= user threshold to prevent future duplicates and restarts
-        if (progress >= this.completionThreshold) {
+        // Mark as scrobbled if >= 80% to prevent future duplicates
+        if (progress >= TRAKT_SCROBBLE_THRESHOLD) {
           this.scrobbledItems.add(watchingKey);
           this.scrobbledTimestamps.set(watchingKey, Date.now());
-          logger.log(`[TraktService] Marked as scrobbled to prevent restarts: ${watchingKey}`);
+          logger.log(`[TraktService] Scrobbled (>= 80%): ${watchingKey}`);
         }
 
-        // Action reflects actual endpoint used based on user threshold
-        const action = progress >= this.completionThreshold ? 'scrobbled' : 'paused';
-        logger.log(`[TraktService] Stopped watching ${contentData.type}: ${contentData.title} (${progress.toFixed(1)}% - ${action})`);
-
+        const action = progress >= TRAKT_SCROBBLE_THRESHOLD ? 'scrobbled' : 'paused';
+        logger.log(`[TraktService] /scrobble/stop sent: ${contentData.title} (${progress.toFixed(1)}% - ${action})`);
         return true;
       } else {
-        // If failed, remove from lastStopCalls so we can try again
         this.lastStopCalls.delete(watchingKey);
       }
 
       return false;
     } catch (error) {
-      // Handle rate limiting errors more gracefully
       if (error instanceof Error && error.message.includes('429')) {
         logger.warn('[TraktService] Rate limited, will retry later');
         return true;
       }
-
       logger.error('[TraktService] Failed to stop scrobbling:', error);
       return false;
     }
@@ -2354,6 +2438,7 @@ export class TraktService {
 
   /**
    * Immediate scrobble stop - bypasses queue for instant user feedback
+   * Always sends /scrobble/stop — Trakt handles pause vs scrobble based on progress.
    */
   public async scrobbleStopImmediate(contentData: TraktContentData, progress: number): Promise<boolean> {
     try {
@@ -2363,7 +2448,12 @@ export class TraktService {
 
       const watchingKey = this.getWatchingKey(contentData);
 
-      // MINIMAL DEDUPLICATION: Only prevent calls within 200ms for immediate actions
+      if (this.isRecentlyScrobbled(contentData)) {
+        logger.log(`[TraktService] Already scrobbled, skipping immediate stop: ${contentData.title}`);
+        return true;
+      }
+
+      // Prevent calls within 200ms for immediate actions
       const lastStopTime = this.lastStopCalls.get(watchingKey);
       if (lastStopTime && (Date.now() - lastStopTime) < 200) {
         return true;
@@ -2371,24 +2461,19 @@ export class TraktService {
 
       this.lastStopCalls.set(watchingKey, Date.now());
 
-      // BYPASS QUEUE: Use pause if below user threshold, stop only when ready to scrobble
-      const useStop = progress >= this.completionThreshold;
-      const result = useStop
-        ? await this.stopWatching(contentData, progress)
-        : await this.pauseWatching(contentData, progress);
+      // Always use /scrobble/stop — Trakt decides pause vs scrobble based on progress
+      const result = await this.stopWatching(contentData, progress);
 
       if (result) {
         this.currentlyWatching.delete(watchingKey);
 
-        // Mark as scrobbled if >= user threshold to prevent future duplicates and restarts
-        if (progress >= this.completionThreshold) {
+        if (progress >= TRAKT_SCROBBLE_THRESHOLD) {
           this.scrobbledItems.add(watchingKey);
           this.scrobbledTimestamps.set(watchingKey, Date.now());
         }
 
-        // Action reflects actual endpoint used based on user threshold
-        const action = progress >= this.completionThreshold ? 'scrobbled' : 'paused';
-        logger.log(`[TraktService] IMMEDIATE: Stopped watching ${contentData.type}: ${contentData.title} (${progress.toFixed(1)}% - ${action})`);
+        const action = progress >= TRAKT_SCROBBLE_THRESHOLD ? 'scrobbled' : 'paused';
+        logger.log(`[TraktService] IMMEDIATE /scrobble/stop: ${contentData.title} (${progress.toFixed(1)}% - ${action})`);
 
         return true;
       }
@@ -2679,21 +2764,43 @@ export class TraktService {
   }
 
   /**
-   * Remove a movie from watched history by IMDB ID
+   * Remove a movie from watched history by IMDB ID.
+   * If the primary imdbId is not a valid IMDb ID (e.g. a provider ID like "kitsu:123"),
+   * falls back to fallbackImdbId (typically the resolved IMDb ID from metadata).
    */
-  public async removeMovieFromHistory(imdbId: string): Promise<boolean> {
+  public async removeMovieFromHistory(imdbId: string, fallbackImdbId?: string): Promise<boolean> {
     try {
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+
+      // Resolve which ID to use: prefer a proper IMDb-format ID
+      let resolvedId = imdbId;
+      if (!isImdbFormat(imdbId) && fallbackImdbId && isImdbFormat(fallbackImdbId) && fallbackImdbId !== imdbId) {
+        logger.log(`[TraktService] removeMovieFromHistory: "${imdbId}" is not IMDb format, falling back to "${fallbackImdbId}"`);
+        resolvedId = fallbackImdbId;
+      }
+
       const payload: TraktHistoryRemovePayload = {
         movies: [
           {
             ids: {
-              imdb: imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`
+              imdb: resolvedId.startsWith('tt') ? resolvedId : `tt${resolvedId}`
             }
           }
         ]
       };
 
       const result = await this.removeFromHistory(payload);
+
+      // If primary attempt deleted nothing and we haven't tried the fallback yet, try it
+      if ((result === null || result.deleted.movies === 0) && fallbackImdbId && fallbackImdbId !== imdbId && fallbackImdbId !== resolvedId && isImdbFormat(fallbackImdbId)) {
+        logger.log(`[TraktService] removeMovieFromHistory: primary attempt found nothing, retrying with fallback ID "${fallbackImdbId}"`);
+        const fallbackPayload: TraktHistoryRemovePayload = {
+          movies: [{ ids: { imdb: fallbackImdbId.startsWith('tt') ? fallbackImdbId : `tt${fallbackImdbId}` } }]
+        };
+        const fallbackResult = await this.removeFromHistory(fallbackPayload);
+        return fallbackResult !== null && fallbackResult.deleted.movies > 0;
+      }
+
       return result !== null && result.deleted.movies > 0;
     } catch (error) {
       logger.error('[TraktService] Failed to remove movie from history:', error);
@@ -2704,14 +2811,24 @@ export class TraktService {
   /**
    * Remove an episode from watched history by IMDB IDs
    */
-  public async removeEpisodeFromHistory(showImdbId: string, season: number, episode: number): Promise<boolean> {
+  public async removeEpisodeFromHistory(showImdbId: string, season: number, episode: number, fallbackImdbId?: string): Promise<boolean> {
     try {
       logger.log(`🔍 [TraktService] removeEpisodeFromHistory called for ${showImdbId} S${season}E${episode}`);
+
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+      const resolvedId = (!isImdbFormat(showImdbId) && fallbackImdbId && isImdbFormat(fallbackImdbId))
+        ? fallbackImdbId
+        : showImdbId;
+
+      if (resolvedId !== showImdbId) {
+        logger.log(`[TraktService] removeEpisodeFromHistory: "${showImdbId}" is not IMDb format, falling back to "${resolvedId}"`);
+      }
+
       const payload: TraktHistoryRemovePayload = {
         shows: [
           {
             ids: {
-              imdb: showImdbId.startsWith('tt') ? showImdbId : `tt${showImdbId}`
+              imdb: resolvedId.startsWith('tt') ? resolvedId : `tt${resolvedId}`
             },
             seasons: [
               {
@@ -2730,6 +2847,23 @@ export class TraktService {
       logger.log(`📤 [TraktService] Sending removeEpisodeFromHistory payload:`, JSON.stringify(payload, null, 2));
 
       const result = await this.removeFromHistory(payload);
+
+      // If nothing was deleted and we haven't tried the fallback yet, retry with it
+      if ((result === null || result.deleted.episodes === 0) && fallbackImdbId && fallbackImdbId !== resolvedId && isImdbFormat(fallbackImdbId)) {
+        logger.log(`[TraktService] removeEpisodeFromHistory: retrying with fallback ID "${fallbackImdbId}"`);
+        const fallbackPayload: TraktHistoryRemovePayload = {
+          shows: [{
+            ids: { imdb: fallbackImdbId.startsWith('tt') ? fallbackImdbId : `tt${fallbackImdbId}` },
+            seasons: [{ number: season, episodes: [{ number: episode }] }]
+          }]
+        };
+        const fallbackResult = await this.removeFromHistory(fallbackPayload);
+        if (fallbackResult) {
+          logger.log(`✅ [TraktService] Episode removal success via fallback: ${fallbackResult.deleted.episodes} episodes deleted`);
+          return fallbackResult.deleted.episodes > 0;
+        }
+        return false;
+      }
 
       if (result) {
         const success = result.deleted.episodes > 0;
@@ -2893,7 +3027,7 @@ export class TraktService {
 
       const endpoint = `/movies/${traktId}/comments?page=${page}&limit=${limit}`;
       const result = await this.apiRequest<TraktContentComment[]>(endpoint, 'GET');
-      // logger.log(`[TraktService] Movie comments response:`, result);
+      // console.log(`[TraktService] Movie comments response:`, result);
       return result;
     } catch (error) {
       logger.error('[TraktService] Failed to get movie comments:', error);
@@ -2921,7 +3055,7 @@ export class TraktService {
 
       const endpoint = `/shows/${traktId}/comments?page=${page}&limit=${limit}`;
       const result = await this.apiRequest<TraktContentComment[]>(endpoint, 'GET');
-      logger.log(`[TraktService] Show comments response:`, result);
+      console.log(`[TraktService] Show comments response:`, result);
       return result;
     } catch (error) {
       logger.error('[TraktService] Failed to get show comments:', error);
@@ -3126,14 +3260,12 @@ export class TraktService {
    */
   private handleAppStateChange = (nextState: AppStateStatus) => {
     if (nextState !== 'active') {
-      // Clear tracking maps to reduce memory pressure when app goes to background
-      this.scrobbledItems.clear();
-      this.scrobbledTimestamps.clear();
-      this.currentlyWatching.clear();
-      this.lastSyncTimes.clear();
-      this.lastStopCalls.clear();
-
-      // Clear request queue to prevent background processing
+      // Only clear the request queue to prevent background processing.
+      // DO NOT clear scrobbledItems / currentlyWatching / lastStopCalls here.
+      // Clearing them causes duplicate scrobble entries when the app backgrounds
+      // during a long pause and then resumes — all dedup guards are gone and
+      // scrobbleStart fires a fresh /scrobble/start for the same content.
+      // These maps are small and already expire via cleanupOldStopCalls().
       this.requestQueue = [];
       this.isProcessingQueue = false;
     }

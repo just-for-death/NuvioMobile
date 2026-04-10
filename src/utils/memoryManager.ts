@@ -20,20 +20,55 @@ export class MemoryManager {
   }
 
   /**
-   * Memory-efficient clearing of large objects
+   * Force garbage collection (React Native specific)
+   * This suggests to the JavaScript engine to run garbage collection
+   */
+  public forceGarbageCollection(): void {
+    try {
+      // Request garbage collection if available (development builds)
+      if (global && typeof global.gc === 'function') {
+        global.gc();
+      } else if (__DEV__) {
+        // In development, we can try to trigger GC by creating and releasing large objects
+        this.triggerGCInDev();
+      }
+    } catch (error) {
+      logger.warn('[MemoryManager] Could not force garbage collection:', error);
+    }
+  }
+
+  /**
+   * Development-only method to trigger garbage collection
+   */
+  private triggerGCInDev(): void {
+    try {
+      // Create a large temporary object to trigger GC
+      const largeArray = new Array(1000000).fill(null);
+      // Release reference
+      largeArray.length = 0;
+    } catch (error) {
+      // Ignore errors in GC triggering
+    }
+  }
+
+  /**
+   * Clear large objects from memory by setting them to null
    */
   public clearObjects(...objects: any[]): void {
-    objects.forEach(obj => {
+    objects.forEach((obj, index) => {
       if (obj && typeof obj === 'object') {
+        // Clear arrays
         if (Array.isArray(obj)) {
           obj.length = 0;
-        } else {
-          // Setting properties to null is generally more efficient than 'delete'
-          // as it maintains the object's hidden class in V8/Hermes
+        }
+        // Clear object properties
+        else {
           Object.keys(obj).forEach(key => {
             try {
-              (obj as any)[key] = null;
-            } catch (error) {}
+              delete obj[key];
+            } catch (error) {
+              // Some properties might not be deletable
+            }
           });
         }
       }
@@ -62,9 +97,9 @@ export class MemoryManager {
       
       results.push(...batchResults);
       
-      // Cleanup between batches for large datasets
+      // Force cleanup between batches for large datasets
       if (i > 0 && i % (batchSize * 5) === 0) {
-        await new Promise(resolve => setImmediate(resolve));
+        this.forceGarbageCollection();
       }
       
       // Optional delay to prevent blocking
@@ -99,7 +134,13 @@ export class MemoryManager {
   private performMemoryCleanup(): void {
     try {
       logger.log('[MemoryManager] Performing memory cleanup');
+      
+      // Force garbage collection
+      this.forceGarbageCollection();
+      
+      // Clear any global caches if they exist
       this.clearGlobalCaches();
+      
     } catch (error) {
       logger.error('[MemoryManager] Error during memory cleanup:', error);
     }
@@ -168,6 +209,7 @@ export class MemoryManager {
       
       // Cleanup between large batches
       if (i > 0 && i % (batchSize * 10) === 0) {
+        this.forceGarbageCollection();
         await new Promise(resolve => setImmediate(resolve));
       }
     }

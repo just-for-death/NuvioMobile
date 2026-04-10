@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
@@ -444,7 +443,7 @@ const DownloadsScreen: React.FC = () => {
           if (success) return;
           // Fall through to internal player if external fails
         } catch (error) {
-          logger.error('External player failed:', error);
+          console.error('External player failed:', error);
           // Fall through to internal player
         }
       } else if (Platform.OS === 'ios') {

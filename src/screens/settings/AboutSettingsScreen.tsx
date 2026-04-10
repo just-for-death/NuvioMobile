@@ -1,4 +1,3 @@
-import { logger } from "../../utils/logger";
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Platform, Linking, Dimensions, Alert, TextInput, Modal, KeyboardAvoidingView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -80,7 +79,7 @@ export const AboutSettingsContent: React.FC<AboutSettingsContentProps> = ({
                 const devModeEnabled = await mmkvStorage.getItem('developer_mode_enabled');
                 setDeveloperModeEnabled(devModeEnabled === 'true');
             } catch (error) {
-                logger.error('Failed to load developer mode state:', error);
+                console.error('Failed to load developer mode state:', error);
             }
         };
         loadDevModeState();
@@ -141,7 +140,7 @@ export const AboutSettingsContent: React.FC<AboutSettingsContentProps> = ({
                     t('settings.developer_mode.enabled_message', 'Developer tools are now available in Settings.')
                 );
             } catch (error) {
-                logger.error('Failed to save developer mode state:', error);
+                console.error('Failed to save developer mode state:', error);
             }
         } else {
             showAlert(
@@ -173,7 +172,7 @@ export const AboutSettingsContent: React.FC<AboutSettingsContentProps> = ({
                                 t('settings.developer_mode.disabled_message', 'Developer tools are now hidden.')
                             );
                         } catch (error) {
-                            logger.error('Failed to save developer mode state:', error);
+                            console.error('Failed to save developer mode state:', error);
                         }
                     },
                 },

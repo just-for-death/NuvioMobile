@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import { Platform } from 'react-native';
 
 export interface GithubReleaseInfo {
@@ -113,14 +112,14 @@ export async function fetchContributors(): Promise<GitHubContributor[] | null> {
     });
 
     if (!res.ok) {
-      if (__DEV__) logger.error('GitHub API error:', res.status, res.statusText);
+      if (__DEV__) console.error('GitHub API error:', res.status, res.statusText);
       return null;
     }
 
     const contributors = await res.json();
     return contributors;
   } catch (error) {
-    if (__DEV__) logger.error('Error fetching contributors:', error);
+    if (__DEV__) console.error('Error fetching contributors:', error);
     return null;
   }
 }

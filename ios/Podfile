@@ -36,7 +36,7 @@ target 'Nuvio' do
     ]
   end
 
-  config = use_native_modules!(config_command, exclude: ['@sentry/react-native'])
+  config = use_native_modules!(config_command)
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
@@ -52,13 +52,9 @@ target 'Nuvio' do
   # KSPlayer dependencies
   # Use the local checkout so we can patch subtitle rendering (and other behaviors) without forking.
   pod 'KSPlayer', :path => '../KSPlayer'
-  pod 'DisplayCriteria', :path => '../KSPlayer/DisplayCriteria', :modular_headers => true
+  pod 'DisplayCriteria', :path => '../KSPlayer', :modular_headers => true
   pod 'FFmpegKit', :git => 'https://github.com/kingslay/FFmpegKit.git', :branch => 'main', :modular_headers => true
   pod 'Libass', :git => 'https://github.com/kingslay/FFmpegKit.git', :branch => 'main'
-
-  # Sentry Native Bypassed for v2.0 stable archive (resolves SwiftCompile conflicts on Xcode 16.1)
-  # pod 'Sentry', :modular_headers => true
-  # pod 'RNSentry', :path => '../node_modules/@sentry/react-native', :modular_headers => true
 
   post_install do |installer|
     react_native_post_install(
@@ -67,14 +63,5 @@ target 'Nuvio' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
-
-    # deep analysis: Align all pods with the app's deployment target and Swift version
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        # Ensure consistent deployment target and Swift version across all pods for stable ABI
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
-        config.build_settings['SWIFT_VERSION'] = '5.0'
-      end
-    end
   end
 end

@@ -1,13 +1,8 @@
-import { logger } from "../utils/logger";
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { GithubReleaseInfo } from './githubReleaseService';
-
-// Android Intent Flags
-const FLAG_GRANT_READ_URI_PERMISSION = 1;
-const FLAG_ACTIVITY_NEW_TASK = 268435456; // 0x10000000
 
 class AndroidUpdateService {
     /**
@@ -30,19 +25,15 @@ class AndroidUpdateService {
 
         const apkUrl = this.getBestApkUrl(release);
         if (!apkUrl) {
-            logger.warn('No suitable APK found for this device architecture');
+            console.warn('No suitable APK found for this device architecture');
             return false;
         }
 
         try {
             // Create a temporary file path
             const filename = `nuvio-update-${release.tag_name}.apk`;
-            const cacheDir = FileSystem.cacheDirectory;
-            if (!cacheDir) {
-                logger.error('Cache directory is not available');
-                return false;
-            }
-            const downloadDest = `${cacheDir}${filename}`;
+            // @ts-ignore
+            const downloadDest = `${FileSystem.cacheDirectory}${filename}`;
 
             // Create a resumable download to track progress
             const callback = (downloadProgress: FileSystem.DownloadProgressData) => {
@@ -61,7 +52,7 @@ class AndroidUpdateService {
             const downloadRes = await downloadResumable.downloadAsync();
 
             if (!downloadRes || downloadRes.status !== 200) {
-                logger.error('Failed to download APK', downloadRes?.status);
+                console.error('Failed to download APK', downloadRes?.status);
                 return false;
             }
 
@@ -69,17 +60,17 @@ class AndroidUpdateService {
             const contentUri = await FileSystem.getContentUriAsync(downloadDest);
 
             // Launch the intent to install
-            logger.log('AndroidUpdateService: Starting installation intent with content URI:', contentUri);
+            console.log('AndroidUpdateService: Starting installation intent with content URI:', contentUri);
             await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
                 data: contentUri,
-                flags: FLAG_GRANT_READ_URI_PERMISSION | FLAG_ACTIVITY_NEW_TASK,
+                flags: 1 | 268435456, // FLAG_GRANT_READ_URI_PERMISSION (1) | FLAG_ACTIVITY_NEW_TASK (0x10000000)
                 type: 'application/vnd.android.package-archive',
             });
 
-            logger.log('AndroidUpdateService: Installation intent started successfully');
+            console.log('AndroidUpdateService: Installation intent started successfully');
             return true;
         } catch (error) {
-            logger.error('Error downloading or installing update:', error);
+            console.error('Error downloading or installing update:', error);
             return false;
         }
     }
@@ -89,11 +80,11 @@ class AndroidUpdateService {
      * Priority: Specific Arch > Universal > First APK found
      */
     private getBestApkUrl(release: GithubReleaseInfo): string | null {
-        logger.log('AndroidUpdateService: Finding best APK for release assets:', release.assets?.length);
+        console.log('AndroidUpdateService: Finding best APK for release assets:', release.assets?.length);
         if (!release.assets || release.assets.length === 0) return null;
 
         const supportedArchs = Device.supportedCpuArchitectures; // e.g. ['arm64-v8a', 'armeabi-v7a']
-        logger.log('Device architectures:', supportedArchs);
+        console.log('Device architectures:', supportedArchs);
 
         // Helper to find asset containing string (case-insensitive)
         const findAsset = (keyword: string) =>
@@ -112,7 +103,7 @@ class AndroidUpdateService {
 
         // 2. No fallback: If no specific architecture match is found, return null.
         // User requested strict matching to avoid downloading incompatible APKs.
-        logger.warn('AndroidUpdateService: No matching APK found for device architectures:', supportedArchs);
+        console.warn('AndroidUpdateService: No matching APK found for device architectures:', supportedArchs);
         return null;
     }
 }

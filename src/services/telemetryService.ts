@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 /**
  * Telemetry Service
  * 
@@ -109,7 +108,7 @@ class TelemetryService {
         piiEnabled: pii === 'true',
       };
     } catch (error) {
-      logger.error('[TelemetryService] Error loading settings sync:', error);
+      console.error('[TelemetryService] Error loading settings sync:', error);
       this.settings = { ...DEFAULT_SETTINGS };
     }
   }
@@ -149,9 +148,8 @@ class TelemetryService {
       }
 
       this.initialized = true;
-      logger.log('[TelemetryService] Initialized with settings:', this.settings);
     } catch (error) {
-      logger.error('[TelemetryService] Error initializing:', error);
+      console.error('[TelemetryService] Error initializing:', error);
       // Use defaults on error
       this.settings = { ...DEFAULT_SETTINGS };
       this.initialized = true;
@@ -202,7 +200,7 @@ class TelemetryService {
     this.settings.analyticsEnabled = enabled;
     await mmkvStorage.setItem(TELEMETRY_KEYS.ANALYTICS_ENABLED, enabled.toString());
     this.emitSettingsChanged();
-    logger.log('[TelemetryService] Analytics enabled:', enabled);
+    console.log('[TelemetryService] Analytics enabled:', enabled);
   }
 
   /**
@@ -212,7 +210,7 @@ class TelemetryService {
     this.settings.errorReportingEnabled = enabled;
     await mmkvStorage.setItem(TELEMETRY_KEYS.ERROR_REPORTING_ENABLED, enabled.toString());
     this.emitSettingsChanged();
-    logger.log('[TelemetryService] Error reporting enabled:', enabled);
+    console.log('[TelemetryService] Error reporting enabled:', enabled);
   }
 
   /**
@@ -222,7 +220,7 @@ class TelemetryService {
     this.settings.sessionReplayEnabled = enabled;
     await mmkvStorage.setItem(TELEMETRY_KEYS.SESSION_REPLAY_ENABLED, enabled.toString());
     this.emitSettingsChanged();
-    logger.log('[TelemetryService] Session replay enabled:', enabled);
+    console.log('[TelemetryService] Session replay enabled:', enabled);
   }
 
   /**
@@ -232,7 +230,7 @@ class TelemetryService {
     this.settings.piiEnabled = enabled;
     await mmkvStorage.setItem(TELEMETRY_KEYS.PII_ENABLED, enabled.toString());
     this.emitSettingsChanged();
-    logger.log('[TelemetryService] PII enabled:', enabled);
+    console.log('[TelemetryService] PII enabled:', enabled);
   }
 
   /**
@@ -247,7 +245,7 @@ class TelemetryService {
     };
     await this.saveSettings(this.settings);
     this.emitSettingsChanged();
-    logger.log('[TelemetryService] All telemetry disabled');
+    console.log('[TelemetryService] All telemetry disabled');
   }
 
   /**
@@ -262,7 +260,7 @@ class TelemetryService {
     };
     await this.saveSettings(this.settings);
     this.emitSettingsChanged();
-    logger.log('[TelemetryService] Recommended telemetry enabled');
+    console.log('[TelemetryService] Recommended telemetry enabled');
   }
 
   /**
@@ -272,7 +270,7 @@ class TelemetryService {
     this.settings = { ...DEFAULT_SETTINGS };
     await this.saveSettings(this.settings);
     this.emitSettingsChanged();
-    logger.log('[TelemetryService] Reset to defaults');
+    console.log('[TelemetryService] Reset to defaults');
   }
 
   /**

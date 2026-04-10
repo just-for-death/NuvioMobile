@@ -66,15 +66,15 @@ export const useWatchProgress = (
     try {
       if (id && type) {
         if (type === 'series') {
-          const allProgress = await storageService.getSeriesWatchProgress(id);
+          const allProgress = await storageService.getAllWatchProgress();
 
           // Function to get episode number from episodeId
           const getEpisodeNumber = (epId: string) => {
             const parts = epId.split(':');
-            if (parts.length === 2) { // Changed since getSeriesWatchProgress keys are series:id:episodeId
+            if (parts.length === 3) {
               return {
-                season: parseInt(parts[0]),
-                episode: parseInt(parts[1])
+                season: parseInt(parts[1]),
+                episode: parseInt(parts[2])
               };
             }
             return null;
@@ -82,11 +82,12 @@ export const useWatchProgress = (
 
           // Get all episodes for this series with progress
           const seriesProgresses = Object.entries(allProgress)
+            .filter(([key]) => key.includes(`${type}:${id}:`))
             .map(([key, value]) => ({
-              episodeId: key.replace(`${type}:${id}:`, ''),
+              episodeId: key.split(`${type}:${id}:`)[1],
               progress: value
             }))
-            .filter(({ progress }) => {
+            .filter(({ episodeId, progress }) => {
               const progressPercent = (progress.currentTime / progress.duration) * 100;
               return progressPercent > 0;
             });

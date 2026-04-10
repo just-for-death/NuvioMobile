@@ -81,7 +81,7 @@ const MpvPlayer = forwardRef<MpvPlayerRef, MpvPlayerProps>((props, ref) => {
     // Debug logging removed to prevent console spam
 
     const handleLoad = (event: any) => {
-        logger.log('[MpvPlayer] Native onLoad event:', event?.nativeEvent);
+        console.log('[MpvPlayer] Native onLoad event:', event?.nativeEvent);
         props.onLoad?.(event?.nativeEvent);
     };
 
@@ -90,17 +90,17 @@ const MpvPlayer = forwardRef<MpvPlayerRef, MpvPlayerProps>((props, ref) => {
     };
 
     const handleEnd = (event: any) => {
-        logger.log('[MpvPlayer] Native onEnd event');
+        console.log('[MpvPlayer] Native onEnd event');
         props.onEnd?.();
     };
 
     const handleError = (event: any) => {
-        logger.log('[MpvPlayer] Native onError event:', event?.nativeEvent);
+        console.log('[MpvPlayer] Native onError event:', event?.nativeEvent);
         props.onError?.(event?.nativeEvent);
     };
 
     const handleTracksChanged = (event: any) => {
-        logger.log('[MpvPlayer] Native onTracksChanged event:', event?.nativeEvent);
+        console.log('[MpvPlayer] Native onTracksChanged event:', event?.nativeEvent);
         props.onTracksChanged?.(event?.nativeEvent);
     };
 

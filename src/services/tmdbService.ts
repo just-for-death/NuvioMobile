@@ -523,24 +523,58 @@ export class TMDBService {
   }
 
   /**
-   * Extract TMDB ID from Stremio ID
-   * Stremio IDs for series are typically in the format: tt1234567:1:1 (imdbId:season:episode)
-   * or just tt1234567 for the series itself
+   * Extract TMDB ID from Stremio ID.
+   * Handles standard IMDb IDs (tt1234567) as well as anime provider IDs:
+   * - kitsu:12345   → looks up via ARM (arm.haglund.dev)
+   * - mal:12345     → looks up via ARM
+   * - anilist:12345 → looks up via ARM
    */
   async extractTMDBIdFromStremioId(stremioId: string): Promise<number | null> {
     try {
-      // Extract the base ID (remove season/episode info if present)
-      const baseId = stremioId.split(':')[0];
+      // Strip season/episode suffix — e.g. "kitsu:7936:5" → "kitsu:7936"
+      const parts = stremioId.split(':');
+      const prefix = parts[0];
+      const numericId = parts[1];
 
-      // Only try to convert if it's an IMDb ID (starts with 'tt')
-      if (!baseId.startsWith('tt')) {
+      // Standard IMDb ID
+      if (prefix.startsWith('tt') || /^\d{7,}$/.test(prefix)) {
+        const baseId = prefix.startsWith('tt') ? prefix : `tt${prefix}`;
+        return await this.findTMDBIdByIMDB(baseId);
+      }
+
+      // Anime provider IDs — resolve via ARM (https://arm.haglund.dev/api/v2)
+      const ARM_SOURCES: Record<string, string> = {
+        kitsu:   'kitsu',
+        mal:     'myanimelist',
+        anilist: 'anilist',
+      };
+
+      const armSource = ARM_SOURCES[prefix];
+      if (armSource && numericId && /^\d+$/.test(numericId)) {
+        const cacheKey = this.generateCacheKey('arm_tmdb', { source: armSource, id: numericId });
+        const cached = this.getCachedData<number>(cacheKey);
+        if (cached !== null) return cached;
+
+        logger.log(`[TMDB] Resolving TMDB ID for ${prefix}:${numericId} via ARM`);
+        const response = await axios.get('https://arm.haglund.dev/api/v2/ids', {
+          params: { source: armSource, id: numericId },
+          timeout: 8000,
+        });
+
+        const tmdbId: number | undefined = response.data?.themoviedb;
+        if (tmdbId) {
+          this.setCachedData(cacheKey, tmdbId);
+          logger.log(`[TMDB] ARM resolved ${prefix}:${numericId} → TMDB ${tmdbId}`);
+          return tmdbId;
+        }
+
+        logger.warn(`[TMDB] ARM did not return a TMDB ID for ${prefix}:${numericId}`);
         return null;
       }
 
-      // Use the existing findTMDBIdByIMDB function to get the TMDB ID
-      const tmdbId = await this.findTMDBIdByIMDB(baseId);
-      return tmdbId;
+      return null;
     } catch (error) {
+      logger.warn('[TMDB] extractTMDBIdFromStremioId failed:', error);
       return null;
     }
   }
@@ -548,6 +582,32 @@ export class TMDBService {
   /**
    * Find TMDB ID by IMDB ID
    */
+  /**
+   * Resolve both the TMDB ID and the correct content type ('movie' | 'series') for an IMDb ID.
+   * Uses TMDB's /find endpoint which returns tv_results and movie_results simultaneously,
+   * giving a definitive type without sequential guessing.
+   * TV results take priority since "other"-typed search results are usually series/anime.
+   */
+  async findTypeAndIdByIMDB(imdbId: string): Promise<{ tmdbId: number; type: 'movie' | 'series' } | null> {
+    try {
+      const baseImdbId = imdbId.split(':')[0];
+      const response = await axios.get(`${BASE_URL}/find/${baseImdbId}`, {
+        headers: await this.getHeaders(),
+        params: await this.getParams({ external_source: 'imdb_id' }),
+      });
+
+      if (response.data.tv_results?.length > 0) {
+        return { tmdbId: response.data.tv_results[0].id, type: 'series' };
+      }
+      if (response.data.movie_results?.length > 0) {
+        return { tmdbId: response.data.movie_results[0].id, type: 'movie' };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   async findTMDBIdByIMDB(imdbId: string, language: string = 'en-US'): Promise<number | null> {
     const cacheKey = this.generateCacheKey('find_imdb', { imdbId, language });
 
@@ -615,23 +675,17 @@ export class TMDBService {
 
       const allEpisodes: { [seasonNumber: number]: TMDBEpisode[] } = {};
 
-      const seasonsToFetch = showDetails.seasons.filter(season => season.season_number > 0);
-      const batchSize = 5;
-
-      for (let i = 0; i < seasonsToFetch.length; i += batchSize) {
-        const batch = seasonsToFetch.slice(i, i + batchSize);
-        await Promise.all(batch.map(async season => {
-          try {
-            const seasonDetails = await this.getSeasonDetails(tmdbId, season.season_number, showDetails.name, language);
-            if (seasonDetails && seasonDetails.episodes) {
-              allEpisodes[season.season_number] = seasonDetails.episodes;
-            }
-          } catch (error) {
-            logger.error(`[TMDBService] Failed to fetch episodes for S${season.season_number}:`, error);
+      // Get episodes for each season (in parallel)
+      const seasonPromises = showDetails.seasons
+        .filter(season => season.season_number > 0) // Filter out specials (season 0)
+        .map(async season => {
+          const seasonDetails = await this.getSeasonDetails(tmdbId, season.season_number, showDetails.name, language);
+          if (seasonDetails && seasonDetails.episodes) {
+            allEpisodes[season.season_number] = seasonDetails.episodes;
           }
-        }));
-      }
+        });
 
+      await Promise.all(seasonPromises);
       return allEpisodes;
     } catch (error) {
       return {};

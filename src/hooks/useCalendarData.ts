@@ -470,8 +470,8 @@ export const useCalendarData = (): UseCalendarDataReturn => {
         true
       );
     } finally {
-      // Yield to event loop to allow engine to perform its own cleanup
-      await new Promise(resolve => setImmediate(resolve));
+      // Force garbage collection after processing
+      memoryManager.forceGarbageCollection();
       setLoading(false);
     }
   }, [libraryItems, traktAuthenticated, watchlistShows, continueWatching, watchedShows]);

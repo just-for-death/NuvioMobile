@@ -1,4 +1,3 @@
-import { logger } from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
@@ -74,7 +73,7 @@ export const PrivacySettingsContent: React.FC<PrivacySettingsContentProps> = ({
                 await telemetryService.initialize();
                 setSettings(telemetryService.getSettings());
             } catch (error) {
-                logger.error('Failed to load telemetry settings:', error);
+                console.error('Failed to load telemetry settings:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -95,7 +94,7 @@ export const PrivacySettingsContent: React.FC<PrivacySettingsContentProps> = ({
                 );
             }
         } catch (error) {
-            logger.error('Failed to update analytics setting:', error);
+            console.error('Failed to update analytics setting:', error);
         }
     };
 

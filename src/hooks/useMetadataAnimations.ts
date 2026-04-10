@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import { useEffect } from 'react';
 import { Dimensions } from 'react-native';
 import {
@@ -91,7 +90,7 @@ export const useMetadataAnimations = (safeAreaTop: number, watchProgress: any) =
       });
       } catch (error) {
         // Silently handle any animation errors
-        if (__DEV__) logger.warn('Animation error in enterAnimations:', error);
+        if (__DEV__) console.warn('Animation error in enterAnimations:', error);
       }
     };
 
@@ -99,7 +98,7 @@ export const useMetadataAnimations = (safeAreaTop: number, watchProgress: any) =
     try {
     runOnUI(enterAnimations)();
     } catch (error) {
-      if (__DEV__) logger.warn('Failed to run enter animations:', error);
+      if (__DEV__) console.warn('Failed to run enter animations:', error);
     }
   }, []);
   
@@ -116,14 +115,14 @@ export const useMetadataAnimations = (safeAreaTop: number, watchProgress: any) =
       easing: easings.fast
     });
       } catch (error) {
-        if (__DEV__) logger.warn('Animation error in updateProgress:', error);
+        if (__DEV__) console.warn('Animation error in updateProgress:', error);
       }
     };
     
     try {
     runOnUI(updateProgress)();
     } catch (error) {
-      if (__DEV__) logger.warn('Failed to run progress animation:', error);
+      if (__DEV__) console.warn('Failed to run progress animation:', error);
     }
   }, [watchProgress]);
   
@@ -142,7 +141,7 @@ export const useMetadataAnimations = (safeAreaTop: number, watchProgress: any) =
         cancelAnimation(headerProgress);
         cancelAnimation(staticHeaderElementsY);
       } catch (error) {
-        if (__DEV__) logger.warn('Error canceling animations:', error);
+        if (__DEV__) console.warn('Error canceling animations:', error);
       }
     };
   }, []);
@@ -168,7 +167,7 @@ export const useMetadataAnimations = (safeAreaTop: number, watchProgress: any) =
         });
         }
       } catch (error) {
-        if (__DEV__) logger.warn('Animation error in scroll handler:', error);
+        if (__DEV__) console.warn('Animation error in scroll handler:', error);
       }
     },
   });

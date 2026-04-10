@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import React, { createContext, useContext, useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
 import accountService, { AuthUser } from '../services/AccountService';
@@ -29,7 +28,7 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const u = await accountService.getCurrentUser();
       setUser(u);
     } catch (error) {
-      logger.warn('[AccountContext] Failed to load user:', error);
+      console.warn('[AccountContext] Failed to load user:', error);
       setUser(null);
     } finally {
       if (showLoading) {
@@ -76,25 +75,25 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
     refreshCurrentUser: async () => {
       // Don't set loading if already loading to avoid conflicts
       if (loading) {
-        if (__DEV__) logger.log('[AccountContext] Already loading, skipping refresh');
+        if (__DEV__) console.log('[AccountContext] Already loading, skipping refresh');
         return;
       }
 
-      if (__DEV__) logger.log('[AccountContext] Starting refreshCurrentUser');
+      if (__DEV__) console.log('[AccountContext] Starting refreshCurrentUser');
       setLoading(true);
 
       // Set a timeout to prevent loading from getting stuck
       loadingTimeoutRef.current = setTimeout(() => {
-        logger.warn('[AccountContext] Account loading timeout, forcing loading to false');
+        console.warn('[AccountContext] Account loading timeout, forcing loading to false');
         setLoading(false);
       }, 5000); // Reduced to 5 seconds for faster fallback
 
       try {
         const u = await accountService.getCurrentUser();
-        if (__DEV__) logger.log('[AccountContext] refreshCurrentUser completed:', u ? 'user found' : 'no user');
+        if (__DEV__) console.log('[AccountContext] refreshCurrentUser completed:', u ? 'user found' : 'no user');
         setUser(u);
       } catch (error) {
-        logger.error('[AccountContext] Failed to refresh current user:', error);
+        console.error('[AccountContext] Failed to refresh current user:', error);
         // Still set user to null on error to ensure we don't get stuck
         setUser(null);
       } finally {
@@ -103,7 +102,7 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
           loadingTimeoutRef.current = null;
         }
         setLoading(false);
-        if (__DEV__) logger.log('[AccountContext] refreshCurrentUser finished');
+        if (__DEV__) console.log('[AccountContext] refreshCurrentUser finished');
       }
     },
     updateProfile: async (partial) => {

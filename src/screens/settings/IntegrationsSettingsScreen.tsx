@@ -1,4 +1,3 @@
-import { logger } from "../../utils/logger";
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, StatusBar, Dimensions } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -41,7 +40,7 @@ export const IntegrationsSettingsContent: React.FC<IntegrationsSettingsContentPr
             const openRouterKey = await mmkvStorage.getItem('openrouter_api_key');
             setOpenRouterKeySet(!!openRouterKey);
         } catch (error) {
-            if (__DEV__) logger.error('Error loading integration data:', error);
+            if (__DEV__) console.error('Error loading integration data:', error);
         }
     }, []);
 

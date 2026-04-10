@@ -189,6 +189,11 @@ const AndroidVideoPlayer: React.FC = () => {
 
   const metadataResult = useMetadata({ id: id || 'placeholder', type: (type as any) });
   const { metadata, cast } = Boolean(id && type) ? (metadataResult as any) : { metadata: null, cast: [] };
+
+  // For content with provider IDs (e.g. kitsu:123), imdbId from route params may be null at
+  // navigation time. useMetadata resolves it asynchronously via ARM + TMDB. Use that resolved
+  // value as a fallback so Trakt scrobbling and watched status use a real IMDb ID.
+  const resolvedImdbId: string | undefined = imdbId || (metadataResult as any).imdbId || undefined;
   const hasLogo = metadata && metadata.logo;
   const openingAnimation = useOpeningAnimation(backdrop, metadata);
 
@@ -212,12 +217,12 @@ const AndroidVideoPlayer: React.FC = () => {
     type: type === 'series' ? 'series' : 'movie',
     title: episodeTitle || title,
     year: year || 0,
-    imdbId: imdbId || '',
+    imdbId: resolvedImdbId || '',
     season: season,
     episode: episode,
     showTitle: title,
     showYear: year,
-    showImdbId: imdbId,
+    showImdbId: resolvedImdbId,
     episodeId: episodeId
   });
 
@@ -244,7 +249,7 @@ const AndroidVideoPlayer: React.FC = () => {
     traktAutosync,
     controlsHook.seekToTime,
     currentStreamProvider,
-    imdbId,
+    resolvedImdbId,
     season,
     episode,
     releaseDate,
@@ -267,12 +272,13 @@ const AndroidVideoPlayer: React.FC = () => {
   const nextEpisodeHook = useNextEpisode(type, season, episode, groupedEpisodes, (metadataResult as any)?.groupedEpisodes, episodeId);
 
   const { segments: skipIntervals, outroSegment } = useSkipSegments({
-    imdbId: imdbId || (id?.startsWith('tt') ? id : undefined),
+    imdbId: resolvedImdbId || (id?.startsWith('tt') ? id : undefined),
     type,
     season,
     episode,
     malId: (metadata as any)?.mal_id || (metadata as any)?.external_ids?.mal_id,
     kitsuId: id?.startsWith('kitsu:') ? id.split(':')[1] : undefined,
+    tmdbId: currentTmdbId,
     enabled: settings.skipIntroEnabled
   });
 
@@ -368,7 +374,7 @@ const AndroidVideoPlayer: React.FC = () => {
     if (!playerState.isMounted.current) return;
 
     const videoDuration = data.duration;
-    logger.log('[AndroidVideoPlayer] handleLoad called:', {
+    console.log('[AndroidVideoPlayer] handleLoad called:', {
       duration: videoDuration,
       initialPosition: watchProgress.initialPosition,
       showResumeOverlay: watchProgress.showResumeOverlay,
@@ -390,7 +396,7 @@ const AndroidVideoPlayer: React.FC = () => {
     }
 
     if (data.audioTracks) {
-      logger.log('[TrackDebug] raw audioTracks:', JSON.stringify(data.audioTracks));
+      console.log('[TrackDebug] raw audioTracks:', JSON.stringify(data.audioTracks));
       const formatted = data.audioTracks.map((t: any, i: number) => ({
         // react-native-video selectedAudioTrack {type:'index'} uses 0-based list index.
         id: i,
@@ -400,7 +406,7 @@ const AndroidVideoPlayer: React.FC = () => {
       tracksHook.setRnVideoAudioTracks(formatted);
     }
     if (data.textTracks) {
-      logger.log('[TrackDebug] raw textTracks:', JSON.stringify(data.textTracks));
+      console.log('[TrackDebug] raw textTracks:', JSON.stringify(data.textTracks));
       const formatted = data.textTracks.map((t: any, i: number) => ({
         // react-native-video selectedTextTrack {type:'index'} uses 0-based list index.
         // Using `t.index` can be non-unique/misaligned and breaks selection/rendering.
@@ -464,23 +470,27 @@ const AndroidVideoPlayer: React.FC = () => {
     const resumeTarget = watchProgress.initialPosition || watchProgress.initialSeekTargetRef?.current;
     if (resumeTarget && resumeTarget > 0 && !watchProgress.showResumeOverlay && videoDuration > 0) {
       const seekPosition = Math.min(resumeTarget, videoDuration - 0.5);
-      logger.log('[AndroidVideoPlayer] Seeking to resume position:', seekPosition, 'duration:', videoDuration, 'useExoPlayer:', useExoPlayer);
+      console.log('[AndroidVideoPlayer] Seeking to resume position:', seekPosition, 'duration:', videoDuration, 'useExoPlayer:', useExoPlayer);
 
       // Use a small delay to ensure the player is ready
       // Directly use refs to avoid stale closure issues
       setTimeout(() => {
-        logger.log('[AndroidVideoPlayer] Executing resume seek to:', seekPosition, 'ExoPlayer available:', !!exoPlayerRef.current, 'MPV available:', !!mpvPlayerRef.current);
+        console.log('[AndroidVideoPlayer] Executing resume seek to:', seekPosition, 'ExoPlayer available:', !!exoPlayerRef.current, 'MPV available:', !!mpvPlayerRef.current);
 
         if (useExoPlayer && exoPlayerRef.current) {
-          logger.log('[AndroidVideoPlayer] Seeking ExoPlayer to resume position:', seekPosition);
+          console.log('[AndroidVideoPlayer] Seeking ExoPlayer to resume position:', seekPosition);
           exoPlayerRef.current.seek(seekPosition);
         } else if (mpvPlayerRef.current) {
-          logger.log('[AndroidVideoPlayer] Seeking MPV to resume position:', seekPosition);
+          console.log('[AndroidVideoPlayer] Seeking MPV to resume position:', seekPosition);
           mpvPlayerRef.current.seek(seekPosition);
         } else {
-          logger.warn('[AndroidVideoPlayer] No player ref available for resume seek');
+          console.warn('[AndroidVideoPlayer] No player ref available for resume seek');
         }
       }, 300);
+    }
+
+    if (videoDuration > 0) {
+      traktAutosync.handlePlaybackStart(0, videoDuration);
     }
   }, [id, type, episodeId, playerState.isMounted, watchProgress.initialPosition, useExoPlayer]);
 
@@ -731,7 +741,7 @@ const AndroidVideoPlayer: React.FC = () => {
         id,
         type: 'series',
         episodeId: ep.stremioId || `${id}:${ep.season_number}:${ep.episode_number}`,
-        imdbId: imdbId ?? undefined,
+        imdbId: resolvedImdbId ?? undefined,
         backdrop: backdrop || undefined,
         availableStreams: {},
         groupedEpisodes: groupedEpisodes,
@@ -741,7 +751,7 @@ const AndroidVideoPlayer: React.FC = () => {
 
   // Subtitle addon fetching
   const fetchAvailableSubtitles = useCallback(async () => {
-    const targetImdbId = imdbId;
+    const targetImdbId = resolvedImdbId;
     
     setIsLoadingSubtitleList(true);
     try {
@@ -820,7 +830,7 @@ const AndroidVideoPlayer: React.FC = () => {
     } finally {
       setIsLoadingSubtitleList(false);
     }
-  }, [imdbId, type, season, episode, id]);
+  }, [resolvedImdbId, type, season, episode, id]);
 
   const loadWyzieSubtitle = useCallback(async (subtitle: WyzieSubtitle) => {
     if (!subtitle.url) return;
@@ -937,7 +947,7 @@ const AndroidVideoPlayer: React.FC = () => {
                     addonId: currentStreamProvider
                   }, episodeId);
                 }
-                traktAutosync.handleProgressUpdate(data.currentTime, playerState.duration, true);
+                traktAutosync.handlePlaybackStart(data.currentTime, playerState.duration);
               }
             }}
             onEnd={() => {
@@ -969,7 +979,7 @@ const AndroidVideoPlayer: React.FC = () => {
               playerState.setIsBuffering(buf.isBuffering);
             }}
             onTracksChanged={(data) => {
-              logger.log('[AndroidVideoPlayer] onTracksChanged:', data);
+              console.log('[AndroidVideoPlayer] onTracksChanged:', data);
               if (data?.audioTracks) {
                 const formatted = data.audioTracks.map((t: any) => ({
                   id: t.id,
@@ -1046,7 +1056,10 @@ const AndroidVideoPlayer: React.FC = () => {
           onLongPressActivated={speedControl.activateSpeedBoost}
           onLongPressEnd={speedControl.deactivateSpeedBoost}
           onLongPressStateChange={(e) => {
-            if (e.nativeEvent.state !== 4 && e.nativeEvent.state !== 2) speedControl.deactivateSpeedBoost();
+            const state = e.nativeEvent.state;
+            if (state === 5 || state === 3 || state === 1) { // END, CANCELLED, FAILED
+                speedControl.deactivateSpeedBoost();
+            }
           }}
           toggleControls={toggleControls}
           showControls={playerState.showControls}
@@ -1119,7 +1132,7 @@ const AndroidVideoPlayer: React.FC = () => {
           canEnterPictureInPicture={canShowPipButton}
           onEnterPictureInPicture={handleEnterPictureInPicture}
           isBuffering={playerState.isBuffering}
-          imdbId={imdbId}
+          imdbId={resolvedImdbId}
         />
 
         <SpeedActivatedOverlay
@@ -1145,7 +1158,7 @@ const AndroidVideoPlayer: React.FC = () => {
 
         {/* Parental Guide Overlay - Shows after controls first hide */}
         <ParentalGuideOverlay
-          imdbId={imdbId || (id?.startsWith('tt') ? id : undefined)}
+          imdbId={resolvedImdbId || (id?.startsWith('tt') ? id : undefined)}
           type={type as 'movie' | 'series'}
           season={season}
           episode={episode}
@@ -1154,7 +1167,7 @@ const AndroidVideoPlayer: React.FC = () => {
 
         {/* Skip Intro Button - Shows during intro section of TV episodes */}
         <SkipIntroButton
-          imdbId={imdbId || (id?.startsWith('tt') ? id : undefined)}
+          imdbId={resolvedImdbId || (id?.startsWith('tt') ? id : undefined)}
           type={type || 'movie'}
           season={season}
           episode={episode}
@@ -1301,7 +1314,7 @@ const AndroidVideoPlayer: React.FC = () => {
         visible={modals.showSubmitIntroModal}
         onClose={() => modals.setShowSubmitIntroModal(false)}
         currentTime={playerState.currentTime}
-        imdbId={imdbId}
+        imdbId={resolvedImdbId}
         season={season}
         episode={episode}
       />

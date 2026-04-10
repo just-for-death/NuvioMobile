@@ -1038,27 +1038,55 @@ class SupabaseSyncService {
     videoId: string;
     progressKey: string;
   } | null {
-    const parts = key.split(':');
-    if (parts.length < 2) return null;
+    // Key format from buildWpKeyString: "{type}:{contentId}" or "{type}:{contentId}:{episodeId}"
+    // contentId may contain colons (e.g., "tmdb:1399", "kitsu:12345")
+    // episodeId ends with ":{season}:{episode}" digits
+    const typeIdx = key.indexOf(':');
+    if (typeIdx < 0) return null;
 
-    const contentType: 'movie' | 'series' = parts[0] === 'movie' ? 'movie' : 'series';
-    const contentId = parts[1];
-    const episodeId = parts.length > 2 ? parts.slice(2).join(':') : '';
+    const typePart = key.substring(0, typeIdx);
+    if (typePart !== 'movie' && typePart !== 'series') return null;
+    const contentType: 'movie' | 'series' = typePart;
+
+    const rest = key.substring(typeIdx + 1);
+    if (!rest) return null;
+
+    // Extract content ID: detect known prefixed patterns (tmdb:NNN, kitsu:NNN),
+    // otherwise take the first colon-free segment (e.g., tt12345).
+    const cidPrefixMatch = rest.match(/^((?:tmdb|kitsu):\d+)/);
+    const contentId = cidPrefixMatch ? cidPrefixMatch[1] : rest.split(':')[0];
+    if (!contentId) return null;
+
+    const afterContentId = rest.substring(contentId.length);
+
+    if (!afterContentId || afterContentId === ':') {
+      // No episode info (movie or series-level)
+      return {
+        contentType,
+        contentId,
+        season: null,
+        episode: null,
+        videoId: contentId,
+        progressKey: contentId,
+      };
+    }
+
+    // Strip leading ":" to get episodeId
+    const episodeId = afterContentId.substring(1);
+
+    // Extract season:episode from the end of episodeId
     let season: number | null = null;
     let episode: number | null = null;
-
-    if (episodeId) {
-      const match = episodeId.match(/:(\d+):(\d+)$/);
-      if (match) {
-        season = Number(match[1]);
-        episode = Number(match[2]);
-      }
+    const seMatch = episodeId.match(/:(\d+):(\d+)$/);
+    if (seMatch) {
+      season = Number(seMatch[1]);
+      episode = Number(seMatch[2]);
     }
 
     const videoId = episodeId || contentId;
-    const progressKey = contentType === 'movie'
-      ? contentId
-      : (season != null && episode != null ? `${contentId}_s${season}e${episode}` : `${contentId}_${videoId}`);
+    const progressKey = season != null && episode != null
+      ? `${contentId}_s${season}e${episode}`
+      : `${contentId}_${episodeId}`;
 
     return {
       contentType,
@@ -1135,8 +1163,16 @@ class SupabaseSyncService {
   }
 
   private async isExternalProgressSyncConnected(): Promise<boolean> {
-    if (await this.isTraktConnected()) return true;
-    return await this.isSimklConnected();
+    const trakt = await this.isTraktConnected();
+    if (trakt) {
+      logger.log('[SupabaseSyncService] isExternalProgressSyncConnected: Trakt is connected, returning true');
+      return true;
+    }
+    const simkl = await this.isSimklConnected();
+    if (simkl) {
+      logger.log('[SupabaseSyncService] isExternalProgressSyncConnected: Simkl is connected, returning true');
+    }
+    return simkl;
   }
 
   private async pullPluginsToLocal(): Promise<void> {
@@ -1357,7 +1393,7 @@ class SupabaseSyncService {
       const season = row.season == null ? null : Number(row.season);
       const episode = row.episode == null ? null : Number(row.episode);
       const episodeId = type === 'series' && season != null && episode != null
-        ? `${row.content_id}:${season}:${episode}`
+        ? (row.video_id && row.video_id !== row.content_id ? row.video_id : `${row.content_id}:${season}:${episode}`)
         : undefined;
       remoteSet.add(this.buildLocalWatchProgressKey(type, row.content_id, episodeId));
 
@@ -1409,62 +1445,90 @@ class SupabaseSyncService {
 
   private async pushWatchProgressFromLocal(): Promise<void> {
     const all = await storageService.getAllWatchProgress();
+    const allKeys = Object.keys(all);
+
     const nextSeenKeys = new Set<string>();
     const changedEntries: Array<{ key: string; row: WatchProgressRow; signature: string }> = [];
+    let skippedSameSignature = 0;
+    let skippedParseFailure = 0;
 
     for (const [key, value] of Object.entries(all)) {
       nextSeenKeys.add(key);
       const signature = this.getWatchProgressEntrySignature(value);
       if (this.watchProgressPushedSignatures.get(key) === signature) {
+        skippedSameSignature++;
         continue;
       }
 
       const parsed = this.parseWatchProgressKey(key);
       if (!parsed) {
+        skippedParseFailure++;
         continue;
       }
 
-      changedEntries.push({
-        key,
-        signature,
-        row: {
-          content_id: parsed.contentId,
-          content_type: parsed.contentType,
-          video_id: parsed.videoId,
-          season: parsed.season,
-          episode: parsed.episode,
-          position: this.secondsToMsLong(value.currentTime),
-          duration: this.secondsToMsLong(value.duration),
-          last_watched: this.normalizeEpochMs(value.lastUpdated || Date.now()),
-          progress_key: parsed.progressKey,
-        },
-      });
+      const row: WatchProgressRow = {
+        content_id: parsed.contentId,
+        content_type: parsed.contentType,
+        video_id: parsed.videoId,
+        season: parsed.season,
+        episode: parsed.episode,
+        position: this.secondsToMsLong(value.currentTime),
+        duration: this.secondsToMsLong(value.duration),
+        last_watched: this.normalizeEpochMs(value.lastUpdated || Date.now()),
+        progress_key: parsed.progressKey,
+      };
+
+      changedEntries.push({ key, signature, row });
     }
 
     // Prune signatures for entries no longer present locally (deletes are handled separately).
+    let prunedSignatures = 0;
     for (const existingKey of Array.from(this.watchProgressPushedSignatures.keys())) {
       if (!nextSeenKeys.has(existingKey)) {
         this.watchProgressPushedSignatures.delete(existingKey);
+        prunedSignatures++;
       }
     }
+
+    logger.log(`[SupabaseSyncService] pushWatchProgressFromLocal: skippedSameSignature=${skippedSameSignature} skippedParseFailure=${skippedParseFailure} prunedStaleSignatures=${prunedSignatures}`);
 
     if (changedEntries.length === 0) {
       logger.log('[SupabaseSyncService] pushWatchProgressFromLocal: no changed entries; skipping push');
       return;
     }
 
-    await this.callRpc<void>('sync_push_watch_progress', {
-      p_entries: changedEntries.map((entry) => entry.row),
-    });
+    const rpcPayload = changedEntries.map((entry) => entry.row);
+    logger.log(`[SupabaseSyncService] pushWatchProgressFromLocal: calling sync_push_watch_progress with ${rpcPayload.length} entries`);
+    try {
+      await this.callRpc<void>('sync_push_watch_progress', {
+        p_entries: rpcPayload,
+      });
+      logger.log(`[SupabaseSyncService] pushWatchProgressFromLocal: RPC success`);
+    } catch (rpcError: any) {
+      logger.error(`[SupabaseSyncService] pushWatchProgressFromLocal: RPC FAILED`, rpcError?.message || rpcError);
+      throw rpcError;
+    }
 
     for (const entry of changedEntries) {
       this.watchProgressPushedSignatures.set(entry.key, entry.signature);
     }
-    logger.log(`[SupabaseSyncService] pushWatchProgressFromLocal: pushedChanged=${changedEntries.length} totalLocal=${Object.keys(all).length}`);
+    logger.log(`[SupabaseSyncService] pushWatchProgressFromLocal: pushedChanged=${changedEntries.length} totalLocal=${allKeys.length}`);
   }
 
   private async pullLibraryToLocal(): Promise<void> {
-    const rows = await this.callRpc<LibraryRow[]>('sync_pull_library', {});
+    const PAGE_SIZE = 500;
+    const rows: LibraryRow[] = [];
+    let offset = 0;
+    while (true) {
+      const page = await this.callRpc<LibraryRow[]>('sync_pull_library', {
+        p_limit: PAGE_SIZE,
+        p_offset: offset,
+      });
+      if (!page || page.length === 0) break;
+      rows.push(...page);
+      if (page.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+    }
     const localItems = await catalogService.getLibraryItems();
     const existing = new Set(localItems.map((item) => `${item.type}:${item.id}`));
     const remoteSet = new Set<string>();
@@ -1532,6 +1596,8 @@ class SupabaseSyncService {
 
   private async pushWatchedItemsFromLocal(): Promise<void> {
     const items = await watchedService.getAllWatchedItems();
+    if (items.length === 0) return;
+
     const payload: WatchedRow[] = items.map((item) => ({
       content_id: item.content_id,
       content_type: item.content_type,
@@ -1540,7 +1606,13 @@ class SupabaseSyncService {
       episode: item.episode,
       watched_at: item.watched_at,
     }));
-    await this.callRpc<void>('sync_push_watched_items', { p_items: payload });
+
+    try {
+      await this.callRpc<void>('sync_push_watched_items', { p_items: payload });
+    } catch (rpcError: any) {
+      logger.error(`[SupabaseSyncService] pushWatchedItemsFromLocal: RPC FAILED`, rpcError?.message || rpcError);
+      throw rpcError;
+    }
   }
 }
 

@@ -44,7 +44,7 @@ class MemoryMonitorService {
     logger.log('[MemoryMonitor] Started memory monitoring service');
   }
 
-  private handleAppStateChange = async (nextAppState: AppStateStatus) => {
+  private handleAppStateChange = (nextAppState: AppStateStatus) => {
     try {
       switch (nextAppState) {
         case 'background':
@@ -60,8 +60,8 @@ class MemoryMonitorService {
           break;
           
         case 'inactive':
-          // App becoming inactive - light cleanup
-          await new Promise(resolve => setImmediate(resolve));
+          // App becoming inactive - medium cleanup
+          memoryManager.forceGarbageCollection();
           break;
       }
     } catch (error) {
@@ -121,12 +121,12 @@ class MemoryMonitorService {
     this.performAggressiveCleanup();
   }
 
-  private async performBackgroundCleanup(): Promise<void> {
+  private performBackgroundCleanup(): void {
     try {
       logger.log('[MemoryMonitor] Performing scheduled background cleanup');
       
-      // Yield to event loop to allow engine cleanup
-      await new Promise(resolve => setImmediate(resolve));
+      // Force garbage collection
+      memoryManager.forceGarbageCollection();
       
       // Clear any global caches that might have accumulated
       this.clearGlobalCaches();
@@ -136,12 +136,16 @@ class MemoryMonitorService {
     }
   }
 
-  private async performAggressiveCleanup(): Promise<void> {
+  private performAggressiveCleanup(): void {
     try {
       logger.log('[MemoryMonitor] Performing aggressive memory cleanup');
       
-      // Yield to event loop to allow engine cleanup
-      await new Promise(resolve => setImmediate(resolve));
+      // Multiple garbage collection cycles
+      for (let i = 0; i < 3; i++) {
+        memoryManager.forceGarbageCollection();
+        // Small delay between GC cycles
+        setTimeout(() => {}, 100);
+      }
       
       // Clear all possible caches
       this.clearGlobalCaches();

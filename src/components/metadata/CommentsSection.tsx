@@ -1025,12 +1025,12 @@ export const CommentBottomSheet: React.FC<{
     return null;
   }
 
-  logger.log('CommentBottomSheet: Rendered with visible:', visible, 'comment:', comment?.id);
+  console.log('CommentBottomSheet: Rendered with visible:', visible, 'comment:', comment?.id);
 
   // Calculate the index based on visibility - start at medium height (50%)
   const sheetIndex = 1; // Always 1 when visible and comment are truthy
 
-  logger.log('CommentBottomSheet: Calculated sheetIndex:', sheetIndex);
+  console.log('CommentBottomSheet: Calculated sheetIndex:', sheetIndex);
 
   const user = comment.user || {};
   const username = user.name || user.username || 'Anonymous User';
@@ -1088,7 +1088,7 @@ export const CommentBottomSheet: React.FC<{
     <BottomSheet
       ref={bottomSheetRef}
       onChange={(index) => {
-        logger.log('CommentBottomSheet: onChange called with index:', index);
+        console.log('CommentBottomSheet: onChange called with index:', index);
         if (index === -1) {
           onClose();
         }

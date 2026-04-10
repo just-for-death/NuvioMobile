@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -152,7 +151,7 @@ const CastMoviesScreen: React.FC = () => {
         setMovies(allCredits);
       }
     } catch (error) {
-      if (__DEV__) logger.error('Error fetching cast credits:', error);
+      if (__DEV__) console.error('Error fetching cast credits:', error);
     } finally {
       setLoading(false);
     }
@@ -215,8 +214,8 @@ const CastMoviesScreen: React.FC = () => {
 
   const handleMoviePress = async (movie: CastMovie) => {
     if (__DEV__) {
-      logger.log('=== CastMoviesScreen: Movie Press ===');
-      logger.log('Movie data:', {
+      console.log('=== CastMoviesScreen: Movie Press ===');
+      console.log('Movie data:', {
         id: movie.id,
         title: movie.title,
         media_type: movie.media_type,
@@ -229,15 +228,15 @@ const CastMoviesScreen: React.FC = () => {
     }
 
     try {
-      if (__DEV__) logger.log('Attempting to get Stremio ID for:', movie.media_type, movie.id.toString());
+      if (__DEV__) console.log('Attempting to get Stremio ID for:', movie.media_type, movie.id.toString());
 
       // Get Stremio ID using catalogService
       const stremioId = await catalogService.getStremioId(movie.media_type, movie.id.toString());
 
-      if (__DEV__) logger.log('Stremio ID result:', stremioId);
+      if (__DEV__) console.log('Stremio ID result:', stremioId);
 
       if (stremioId) {
-        if (__DEV__) logger.log('Successfully found Stremio ID, navigating to Metadata with:', {
+        if (__DEV__) console.log('Successfully found Stremio ID, navigating to Metadata with:', {
           id: stremioId,
           type: movie.media_type
         });
@@ -245,7 +244,7 @@ const CastMoviesScreen: React.FC = () => {
         // Convert TMDB media type to Stremio media type
         const stremioType = movie.media_type === 'tv' ? 'series' : movie.media_type;
 
-        if (__DEV__) logger.log('Navigating with Stremio type conversion:', {
+        if (__DEV__) console.log('Navigating with Stremio type conversion:', {
           originalType: movie.media_type,
           stremioType: stremioType,
           id: stremioId
@@ -258,16 +257,16 @@ const CastMoviesScreen: React.FC = () => {
           })
         );
       } else {
-        if (__DEV__) logger.warn('Stremio ID is null/undefined for movie:', movie.title);
+        if (__DEV__) console.warn('Stremio ID is null/undefined for movie:', movie.title);
         throw new Error('Could not find Stremio ID');
       }
     } catch (error: any) {
       if (__DEV__) {
-        logger.error('=== Error in handleMoviePress ===');
-        logger.error('Movie:', movie.title);
-        logger.error('Error details:', error);
-        logger.error('Error message:', error.message);
-        logger.error('Error stack:', error.stack);
+        console.error('=== Error in handleMoviePress ===');
+        console.error('Movie:', movie.title);
+        console.error('Error details:', error);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
       }
       setAlertTitle(t('cast.alert_error_title'));
       setAlertMessage(t('cast.alert_error_message', { title: movie.title }));

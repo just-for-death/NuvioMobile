@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import * as Updates from 'expo-updates';
 import { Platform } from 'react-native';
 
@@ -42,7 +41,7 @@ export class UpdateService {
     this.logs.push(logEntry);
 
     // Always log to console for visibility
-    logger.log(logEntry);
+    console.log(logEntry);
   }
 
   /**
@@ -280,7 +279,7 @@ export class UpdateService {
       this.addLog('UpdateService initialization completed successfully', 'INFO');
     } catch (error) {
       this.addLog(`Initialization failed: ${error instanceof Error ? error.message : String(error)}`, 'ERROR');
-      logger.error('Update service initialization failed:', error);
+      console.error('Update service initialization failed:', error);
     }
   }
 
@@ -334,7 +333,7 @@ export class UpdateService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.addLog(`Update check failed: ${errorMessage}`, 'ERROR');
-      logger.error('Failed to check for updates:', error);
+      console.error('Failed to check for updates:', error);
       return { isAvailable: false };
     }
   }
@@ -400,7 +399,7 @@ export class UpdateService {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.addLog(`Update installation failed: ${errorMessage}`, 'ERROR');
       this.addLog(`Error stack: ${error instanceof Error ? error.stack : 'No stack available'}`, 'ERROR');
-      logger.error('Failed to download/install update:', error);
+      console.error('Failed to download/install update:', error);
       return false;
     }
   }
@@ -442,7 +441,7 @@ export class UpdateService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.addLog(`Failed to get current update info: ${errorMessage}`, 'ERROR');
-      logger.error('Failed to get current update info:', error);
+      console.error('Failed to get current update info:', error);
       return { isAvailable: false };
     }
   }

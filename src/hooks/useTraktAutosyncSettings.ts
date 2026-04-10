@@ -16,7 +16,7 @@ export interface TraktAutosyncSettings {
 const DEFAULT_SETTINGS: TraktAutosyncSettings = {
   enabled: true,
   syncFrequency: 60000, // 60 seconds
-  completionThreshold: 95, // 95%
+  completionThreshold: 80, // 80% — Trakt API hardcoded threshold
 };
 
 export function useTraktAutosyncSettings() {

@@ -1,4 +1,3 @@
-import { logger } from "../../utils/logger";
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Image, Linking, useWindowDimensions } from 'react-native';
 import Video from 'react-native-video';
@@ -217,11 +216,9 @@ export const CampaignManager: React.FC = () => {
 
     const checkForCampaigns = useCallback(async () => {
         try {
-            logger.log('[CampaignManager] Checking for campaigns...');
             await new Promise(resolve => setTimeout(resolve, 1500));
 
             const campaign = await campaignService.getActiveCampaign();
-            logger.log('[CampaignManager] Got campaign:', campaign?.id, campaign?.type);
 
             if (campaign) {
                 setActiveCampaign(campaign);
@@ -229,7 +226,7 @@ export const CampaignManager: React.FC = () => {
                 campaignService.recordImpression(campaign.id, campaign.rules.showOncePerUser);
             }
         } catch (error) {
-            logger.warn('[CampaignManager] Failed to check campaigns', error);
+            console.warn('[CampaignManager] Failed to check campaigns', error);
         }
     }, []);
 
@@ -242,7 +239,7 @@ export const CampaignManager: React.FC = () => {
 
         setTimeout(() => {
             const nextCampaign = campaignService.getNextCampaign();
-            logger.log('[CampaignManager] Next campaign:', nextCampaign?.id, nextCampaign?.type);
+            console.log('[CampaignManager] Next campaign:', nextCampaign?.id, nextCampaign?.type);
 
             if (nextCampaign) {
                 setActiveCampaign(nextCampaign);
@@ -255,7 +252,7 @@ export const CampaignManager: React.FC = () => {
     }, []);
 
     const handleAction = useCallback((action: CampaignAction) => {
-        logger.log('[CampaignManager] Action:', action);
+        console.log('[CampaignManager] Action:', action);
 
         if (action.type === 'navigate' && action.value) {
             handleDismiss();
@@ -263,7 +260,7 @@ export const CampaignManager: React.FC = () => {
                 try {
                     (navigation as any).navigate(action.value);
                 } catch (error) {
-                    logger.warn('[CampaignManager] Navigation failed:', error);
+                    console.warn('[CampaignManager] Navigation failed:', error);
                 }
             }, 400);
         } else if (action.type === 'link' && action.value) {

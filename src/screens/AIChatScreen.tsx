@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
@@ -597,7 +596,7 @@ const AIChatScreen: React.FC = () => {
         setContext(seriesContext);
       }
     } catch (error) {
-      if (__DEV__) logger.error('Error loading context:', error);
+      if (__DEV__) console.error('Error loading context:', error);
       openAlert('Error', 'Failed to load content details for AI chat');
     } finally {
       setIsLoadingContext(false);
@@ -691,7 +690,7 @@ const AIChatScreen: React.FC = () => {
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      if (__DEV__) logger.error('Error sending message:', error);
+      if (__DEV__) console.error('Error sending message:', error);
 
       let errorMessage = 'Sorry, I encountered an error. Please try again.';
       if (error instanceof Error) {

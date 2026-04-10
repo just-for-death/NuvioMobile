@@ -214,6 +214,8 @@ const KSPlayerCore: React.FC = () => {
     episodeId
   });
 
+  const currentTmdbId = (metadata as any)?.tmdbId || (metadata as any)?.external_ids?.tmdb_id;
+
   const { segments: skipIntervals, outroSegment } = useSkipSegments({
     imdbId: imdbId || (id?.startsWith('tt') ? id : undefined),
     type,
@@ -221,6 +223,7 @@ const KSPlayerCore: React.FC = () => {
     episode,
     malId: (metadata as any)?.mal_id || (metadata as any)?.external_ids?.mal_id,
     kitsuId: id?.startsWith('kitsu:') ? id.split(':')[1] : undefined,
+    tmdbId: currentTmdbId,
     enabled: settings.skipIntroEnabled
   });
 
@@ -239,11 +242,11 @@ const KSPlayerCore: React.FC = () => {
         duration,
         lastUpdated: Date.now()
       }, episodeId);
+      traktAutosync.handlePlaybackStart(timeInSeconds, duration);
     }
   });
 
   const currentMalId = (metadata as any)?.mal_id || (metadata as any)?.external_ids?.mal_id;
-  const currentTmdbId = (metadata as any)?.tmdbId || (metadata as any)?.external_ids?.tmdb_id;
 
   // Calculate dayIndex for same-day releases
   const currentDayIndex = useMemo(() => {
@@ -476,7 +479,7 @@ const KSPlayerCore: React.FC = () => {
     if (imdbId) {
       fetchAvailableSubtitles(undefined, true);
     }
-  }, [imdbId, episodeId, season, episode]);
+  }, [imdbId]);
 
   // Auto-select subtitles when both internal tracks and video are loaded
   // This ensures we wait for internal tracks before falling back to external
@@ -648,9 +651,6 @@ const KSPlayerCore: React.FC = () => {
     if (isSyncingBeforeClose.current) return;
     isSyncingBeforeClose.current = true;
 
-    // Fire and forget - don't block navigation on async operations
-    // The useWatchProgress and useTraktAutosync hooks handle cleanup on unmount
-    traktAutosync.handleProgressUpdate(currentTime, duration, true);
     traktAutosync.handlePlaybackEnd(currentTime, duration, 'user_close');
 
     navigation.goBack();
@@ -658,7 +658,7 @@ const KSPlayerCore: React.FC = () => {
 
   // Track selection handlers - update state, prop change triggers native update
   const handleSelectTextTrack = useCallback((trackId: number) => {
-    logger.log('[KSPlayerCore] handleSelectTextTrack called with trackId:', trackId);
+    console.log('[KSPlayerCore] handleSelectTextTrack called with trackId:', trackId);
 
     // Disable custom subtitles when selecting a built-in track
     // This ensures the textTrack prop is actually passed to the native player
@@ -759,7 +759,7 @@ const KSPlayerCore: React.FC = () => {
         headers: stream.headers || undefined,
         id,
         type: 'series',
-        episodeId: ep.stremioId || `${id}:${ep.season_number}:${ep.episode_number}`,
+        episodeId: ep.stremioId || `${id}:${ep.season_number}:${ep.episode_number} `,
         imdbId: imdbId ?? undefined,
         backdrop: backdrop || undefined,
       });

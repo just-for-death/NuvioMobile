@@ -76,6 +76,26 @@ import { useScrollToTop } from '../contexts/ScrollToTopContext';
 const CATALOG_SETTINGS_KEY = 'catalog_settings';
 const MAX_CONCURRENT_CATALOG_REQUESTS = 4;
 const HOME_LOADING_SCREEN_TIMEOUT_MS = 5000;
+const HOME_CATALOG_REQUEST_TIMEOUT_MS = 20000;
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(`Request timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise.then(
+      (result) => {
+        clearTimeout(timeoutId);
+        resolve(result);
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    );
+  });
+};
 
 // In-memory cache for catalog settings to avoid repeated MMKV reads
 let cachedCatalogSettings: Record<string, boolean> | null = null;
@@ -134,6 +154,7 @@ const HomeScreen = () => {
   const [catalogs, setCatalogs] = useState<(CatalogContent | null)[]>([]);
   const [catalogsLoading, setCatalogsLoading] = useState(true);
   const [loadedCatalogCount, setLoadedCatalogCount] = useState(0);
+  const [pendingCatalogIndexes, setPendingCatalogIndexes] = useState<Record<number, boolean>>({});
   const [hasAddons, setHasAddons] = useState<boolean | null>(null);
   const [hintVisible, setHintVisible] = useState(false);
   const [loadingScreenTimedOut, setLoadingScreenTimedOut] = useState(false);
@@ -192,6 +213,7 @@ const HomeScreen = () => {
     setCatalogsLoading(true);
     setCatalogs([]);
     setLoadedCatalogCount(0);
+    setPendingCatalogIndexes({});
 
     try {
       // Check cache first
@@ -237,14 +259,41 @@ const HomeScreen = () => {
         });
 
         void Promise.all(workers).catch((error) => {
-          if (__DEV__) logger.warn('[HomeScreen] Catalog loader worker failed:', error);
+          if (__DEV__) console.warn('[HomeScreen] Catalog loader worker failed:', error);
         });
       };
 
       for (const addon of addons) {
         if (addon.catalogs) {
           for (const catalog of addon.catalogs) {
-            // Check if this catalog is enabled (default to true if no setting exists)
+            // ── Manifest-level hard gates (cannot be overridden by user settings) ──
+
+            // 1. Never show search catalogs (search.movie, search.series, etc.)
+            if (
+              (catalog.id && catalog.id.startsWith('search.')) ||
+              (catalog.type && catalog.type.startsWith('search'))
+            ) {
+              continue;
+            }
+
+            // 2. Never show catalogs that have any required extra
+            //    (e.g. required genre, calendarVideosIds — these need params to load)
+            const requiredExtras = (catalog.extra || [])
+              .filter((e: any) => e.isRequired)
+              .map((e: any) => e.name);
+            if (requiredExtras.length > 0) {
+              continue;
+            }
+
+            // 3. Respect showInHome flag — if the addon uses it on any catalog,
+            //    only catalogs with showInHome:true are eligible for home.
+            const addonUsesShowInHome = addon.catalogs.some((c: any) => c.showInHome === true);
+            if (addonUsesShowInHome && !(catalog as any).showInHome) {
+              continue;
+            }
+
+            // ── User toggle (mmkv) — applied on top of manifest gates ──
+            // Default is true unless the manifest gates above have already filtered it out.
             const settingKey = `${addon.id}:${catalog.type}:${catalog.id}`;
             const isEnabled = catalogSettings[settingKey] ?? true;
 
@@ -252,13 +301,17 @@ const HomeScreen = () => {
             if (isEnabled) {
               const currentIndex = catalogIndex;
 
-              const catalogLoader = async () => {
-                try {
-                  const manifest = manifestByAddonId.get(addon.id);
-                  if (!manifest) return;
+                  const catalogLoader = async () => {
+                    try {
+                      const manifest = manifestByAddonId.get(addon.id);
+                      if (!manifest) return;
 
-                  const metas = await stremioService.getCatalog(manifest, catalog.type, catalog.id, 1);
-                  if (metas && metas.length > 0) {
+                      const metas = await withTimeout(
+                        stremioService.getCatalog(manifest, catalog.type, catalog.id, 1),
+                        HOME_CATALOG_REQUEST_TIMEOUT_MS
+                      );
+
+                      if (metas && metas.length > 0) {
                     // Aggressively limit items per catalog on Android to reduce memory usage
                     const limit = Platform.OS === 'android' ? 18 : 30;
                     const limitedMetas = metas.slice(0, limit);
@@ -315,8 +368,17 @@ const HomeScreen = () => {
                     });
                   }
                 } catch (error) {
-                  if (__DEV__) logger.error(`[HomeScreen] Failed to load ${catalog.name} from ${addon.name}:`, error);
+                  if (__DEV__) console.error(`[HomeScreen] Failed to load ${catalog.name} from ${addon.name}:`, error);
                 } finally {
+                  setPendingCatalogIndexes((prev) => {
+                    if (!prev[currentIndex]) {
+                      return prev;
+                    }
+                    const next = { ...prev };
+                    delete next[currentIndex];
+                    return next;
+                  });
+
                   // Update loading count - ensure on main thread
                   InteractionManager.runAfterInteractions(() => {
                     setLoadedCatalogCount(prev => {
@@ -335,8 +397,12 @@ const HomeScreen = () => {
                 }
               };
 
-              catalogQueue.push(catalogLoader);
-              catalogIndex++;
+      catalogQueue.push(catalogLoader);
+      setPendingCatalogIndexes((prev) => ({
+        ...prev,
+        [currentIndex]: true,
+      }));
+      catalogIndex++;
             }
           }
         }
@@ -359,7 +425,7 @@ const HomeScreen = () => {
       // Start catalog requests with bounded concurrency
       launchCatalogLoaders();
     } catch (error) {
-      if (__DEV__) logger.error('[HomeScreen] Error in progressive catalog loading:', error);
+      if (__DEV__) console.error('[HomeScreen] Error in progressive catalog loading:', error);
       InteractionManager.runAfterInteractions(() => {
         setCatalogsLoading(false);
       });
@@ -502,9 +568,9 @@ const HomeScreen = () => {
         // This frees memory while keeping disk cache intact for fast restoration
         try {
           FastImage.clearMemoryCache();
-          if (__DEV__) logger.log('[HomeScreen] Cleared memory cache on background');
+          if (__DEV__) console.log('[HomeScreen] Cleared memory cache on background');
         } catch (error) {
-          if (__DEV__) logger.warn('[HomeScreen] Failed to clear memory cache:', error);
+          if (__DEV__) console.warn('[HomeScreen] Failed to clear memory cache:', error);
         }
       }
     });
@@ -560,7 +626,7 @@ const HomeScreen = () => {
       FastImage.preload(sources);
     } catch (error) {
       // Silently handle preload errors
-      if (__DEV__) logger.warn('Image preload error:', error);
+      if (__DEV__) console.warn('Image preload error:', error);
     }
   }, []);
 
@@ -623,7 +689,7 @@ const HomeScreen = () => {
         setHasContinueWatching(hasContent);
 
       } catch (error) {
-        if (__DEV__) logger.error('[HomeScreen] Error refreshing continue watching:', error);
+        if (__DEV__) console.error('[HomeScreen] Error refreshing continue watching:', error);
         setHasContinueWatching(false);
       }
     }
@@ -695,7 +761,7 @@ const HomeScreen = () => {
     catalogsToShow.forEach((catalog, index) => {
       if (catalog) {
         data.push({ type: 'catalog', catalog, key: `${catalog.addon}-${catalog.id}-${index}` });
-      } else {
+      } else if (catalogsLoading && pendingCatalogIndexes[index]) {
         // Add a key for placeholders
         data.push({ type: 'placeholder', key: `placeholder-${index}` });
       }
@@ -707,7 +773,7 @@ const HomeScreen = () => {
     }
 
     return data;
-  }, [hasAddons, catalogs, visibleCatalogCount, settings.showThisWeekSection]);
+  }, [hasAddons, catalogs, catalogsLoading, pendingCatalogIndexes, visibleCatalogCount, settings.showThisWeekSection]);
 
   const handleLoadMoreCatalogs = useCallback(() => {
     setVisibleCatalogCount(prev => Math.min(prev + 3, catalogs.length));

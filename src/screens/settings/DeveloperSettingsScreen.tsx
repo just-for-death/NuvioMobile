@@ -1,4 +1,3 @@
-import { logger } from "../../utils/logger";
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, StatusBar, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -32,7 +31,7 @@ const DeveloperSettingsScreen: React.FC = () => {
                 const devModeEnabled = await mmkvStorage.getItem('developer_mode_enabled');
                 setDeveloperModeEnabled(__DEV__ || devModeEnabled === 'true');
             } catch (error) {
-                logger.error('Failed to load developer mode state:', error);
+                console.error('Failed to load developer mode state:', error);
             }
         };
         loadDevModeState();

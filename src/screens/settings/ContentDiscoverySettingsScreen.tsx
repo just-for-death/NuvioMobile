@@ -1,4 +1,3 @@
-import { logger } from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, StatusBar, Platform, Dimensions } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -58,7 +57,7 @@ export const ContentDiscoverySettingsContent: React.FC<ContentDiscoverySettingsC
                 setCatalogCount(totalCatalogs);
             }
         } catch (error) {
-            if (__DEV__) logger.error('Error loading content data:', error);
+            if (__DEV__) console.error('Error loading content data:', error);
         }
     }, []);
 

@@ -123,18 +123,18 @@ export const useWatchProgress = (
             if (id && type) {
                 try {
                     const savedProgress = await storageService.getWatchProgress(id, type, episodeId);
-                    logger.log('[useWatchProgress] Loaded saved progress:', savedProgress);
+                    console.log('[useWatchProgress] Loaded saved progress:', savedProgress);
 
                     if (savedProgress) {
                         const progressPercent = (savedProgress.currentTime / savedProgress.duration) * 100;
-                        logger.log('[useWatchProgress] Progress percent:', progressPercent);
+                        console.log('[useWatchProgress] Progress percent:', progressPercent);
 
                         if (progressPercent < 85) {
                             setResumePosition(savedProgress.currentTime);
                             setSavedDuration(savedProgress.duration);
 
                             if (appSettings.alwaysResume) {
-                                logger.log('[useWatchProgress] Always resume enabled, setting initial position:', savedProgress.currentTime);
+                                console.log('[useWatchProgress] Always resume enabled, setting initial position:', savedProgress.currentTime);
                                 setInitialPosition(savedProgress.currentTime);
                                 initialSeekTargetRef.current = savedProgress.currentTime;
                                 // Don't call seekToTime here - duration is 0
@@ -162,7 +162,6 @@ export const useWatchProgress = (
             };
             try {
                 await storageService.setWatchProgress(id, type, progress, episodeId);
-                await traktAutosync.handleProgressUpdate(currentTimeRef.current, durationRef.current);
 
                 // Requirement 1: Auto Episode Tracking (>= 90% completion)
                 const progressPercent = (currentTimeRef.current / durationRef.current) * 100;
@@ -204,20 +203,24 @@ export const useWatchProgress = (
 
     
     useEffect(() => {
-        // Handle pause transitions (upstream)
         if (wasPausedRef.current !== paused) {
             const becamePaused = paused;
             wasPausedRef.current = paused;
             if (becamePaused) {
                 void saveWatchProgress();
+                if (durationRef.current > 0) {
+                    void traktAutosyncRef.current.handlePlaybackEnd(currentTimeRef.current, durationRef.current, 'user_close');
+                }
+            } else {
+                if (durationRef.current > 0) {
+                    void traktAutosyncRef.current.handlePlaybackStart(currentTimeRef.current, durationRef.current);
+                }
             }
         }
 
-        // Handle periodic save when playing (MAL branch)
         if (id && type && !paused) {
             if (progressSaveInterval) clearInterval(progressSaveInterval);
 
-            // Use refs inside the interval so we don't need to restart it on every second
             const interval = setInterval(() => {
                 saveWatchProgress();
             }, 10000);
@@ -238,7 +241,8 @@ export const useWatchProgress = (
             setTimeout(() => {
                 if (id && type && durationRef.current > 0) {
                     saveWatchProgress();
-                    traktAutosync.handlePlaybackEnd(currentTimeRef.current, durationRef.current, 'unmount');
+                    // Use ref to avoid stale closure capturing an old traktAutosync instance
+                    traktAutosyncRef.current.handlePlaybackEnd(currentTimeRef.current, durationRef.current, 'unmount');
                 }
             }, 0);
         };

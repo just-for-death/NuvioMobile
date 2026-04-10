@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { toastService } from '../services/toastService';
@@ -63,7 +62,7 @@ export const useUpdatePopup = (): UseUpdatePopupReturn => {
         setShowUpdatePopup(true);
       }
     } catch (error) {
-      if (__DEV__) logger.error('Error checking for updates:', error);
+      if (__DEV__) console.error('Error checking for updates:', error);
       // Don't show popup on error, just log it
     }
   }, [updateInfo.manifest?.id, isAppReady]);
@@ -78,14 +77,14 @@ export const useUpdatePopup = (): UseUpdatePopupReturn => {
       if (success) {
         // Update installed successfully - no restart alert needed
         // The app will automatically reload with the new version
-        logger.log('Update installed successfully');
+        console.log('Update installed successfully');
       } else {
         toastService.error('Installation Failed', 'Unable to install the update. Please try again later or check your internet connection.');
         // Show popup again after failed installation
         setShowUpdatePopup(true);
       }
     } catch (error) {
-      if (__DEV__) logger.error('Error installing update:', error);
+      if (__DEV__) console.error('Error installing update:', error);
       toastService.error('Installation Error', 'An error occurred while installing the update. Please try again later.');
       // Show popup again after error
       setShowUpdatePopup(true);
@@ -100,7 +99,7 @@ export const useUpdatePopup = (): UseUpdatePopupReturn => {
       await mmkvStorage.setItem(UPDATE_LATER_STORAGE_KEY, Date.now().toString());
       setShowUpdatePopup(false);
     } catch (error) {
-      if (__DEV__) logger.error('Error storing update later preference:', error);
+      if (__DEV__) console.error('Error storing update later preference:', error);
       setShowUpdatePopup(false);
     }
   }, []);
@@ -114,7 +113,7 @@ export const useUpdatePopup = (): UseUpdatePopupReturn => {
       }
       setShowUpdatePopup(false);
     } catch (error) {
-      if (__DEV__) logger.error('Error storing dismiss preference:', error);
+      if (__DEV__) console.error('Error storing dismiss preference:', error);
       setShowUpdatePopup(false);
     }
   }, [updateInfo.manifest?.id]);
@@ -123,7 +122,7 @@ export const useUpdatePopup = (): UseUpdatePopupReturn => {
   useEffect(() => {
 
     const handleStartupUpdateCheck = async (updateInfo: UpdateInfo) => {
-      logger.log('UpdatePopup: Received startup update check result', updateInfo);
+      console.log('UpdatePopup: Received startup update check result', updateInfo);
       setUpdateInfo(updateInfo);
       setHasCheckedOnStartup(true);
 
@@ -132,7 +131,7 @@ export const useUpdatePopup = (): UseUpdatePopupReturn => {
         try {
           const otaAlertsEnabled = await mmkvStorage.getItem('@ota_updates_alerts_enabled');
           if (otaAlertsEnabled === 'false') {
-            logger.log('OTA alerts disabled, suppressing popup');
+            console.log('OTA alerts disabled, suppressing popup');
             return;
           }
           setShowUpdatePopup(true);

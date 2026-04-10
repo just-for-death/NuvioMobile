@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { configService, SettingsConfig } from '../services/configService';
@@ -17,7 +16,7 @@ export const useRealtimeConfig = () => {
                 return prevStr === newStr ? prev : fetchedConfig;
             });
         } catch (error) {
-            if (__DEV__) logger.warn('Config fetch failed', error);
+            if (__DEV__) console.warn('Config fetch failed', error);
         }
     }, []);
 

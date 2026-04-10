@@ -18,6 +18,7 @@ import { RootStackParamList } from '../../navigation/AppNavigator';
 import { LinearGradient } from 'expo-linear-gradient';
 import FastImage from '@d11/react-native-fast-image';
 import { MaterialIcons, Entypo } from '@expo/vector-icons';
+import PlayerPlayIconBlack from '../../../assets/player-icons/ic_player_play_black.svg';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -156,12 +157,7 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
   const { isTrailerPlaying: globalTrailerPlaying, setTrailerPlaying } = useTrailer();
   const { toggleLibrary, isInLibrary: checkIsInLibrary } = useLibrary();
   const { showSaved, showTraktSaved, showRemoved, showTraktRemoved } = useToast();
-  const { 
-    isAuthenticated: isTraktAuthenticated, 
-    isInWatchlist: checkTraktWatchlist, 
-    addToWatchlist, 
-    removeFromWatchlist 
-  } = useTraktContext();
+  const { isAuthenticated: isTraktAuthenticated } = useTraktContext();
 
   // Library and watch state
   const [inLibrary, setInLibrary] = useState(false);
@@ -602,13 +598,10 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
       const libraryStatus = checkIsInLibrary(itemId);
       setInLibrary(libraryStatus);
 
-      // Check Trakt watchlist status if authenticated
-      if (isTraktAuthenticated && currentItem) {
-        const imdbId = currentItem.imdb_id || currentItem.external_ids?.imdb_id;
-        if (imdbId) {
-          const traktType = currentItem.type === 'movie' ? 'movie' : 'show';
-          setIsInWatchlist(checkTraktWatchlist(imdbId, traktType));
-        }
+      // TODO: Check Trakt watchlist status if authenticated
+      if (isTraktAuthenticated) {
+        // await traktService.isInWatchlist(itemId);
+        setIsInWatchlist(Math.random() > 0.5); // Replace with actual Trakt call
       }
     } catch (error) {
       logger.error('[AppleTVHero] Error checking item status:', error);
@@ -641,20 +634,12 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
       }
 
       // If authenticated with Trakt, also toggle Trakt watchlist
-      if (isTraktAuthenticated && currentItem) {
-        const imdbId = currentItem.imdb_id || currentItem.external_ids?.imdb_id;
-        if (imdbId) {
-          const traktType = currentItem.type === 'movie' ? 'movie' : 'show';
-          if (wasInWatchlist) {
-            await removeFromWatchlist(imdbId, traktType);
-            showTraktRemoved();
-          } else {
-            await addToWatchlist(imdbId, traktType);
-            showTraktSaved();
-          }
-          setIsInWatchlist(!wasInWatchlist);
-          logger.info('[AppleTVHero] Toggled Trakt watchlist');
-        }
+      if (isTraktAuthenticated) {
+        setIsInWatchlist(!wasInWatchlist);
+
+        // TODO: Replace with your actual Trakt service call
+        // await traktService.toggleWatchlist(currentItem.id, !wasInWatchlist);
+        logger.info('[AppleTVHero] Toggled Trakt watchlist');
       }
 
     } catch (error) {
@@ -1332,11 +1317,19 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
               onPress={handlePlayAction}
               activeOpacity={0.85}
             >
-              <MaterialIcons
-                name={shouldResume ? "replay" : "play-arrow"}
-                size={24}
-                color="#000"
-              />
+              {shouldResume ? (
+                <MaterialIcons
+                  name="replay"
+                  size={24}
+                  color="#000"
+                />
+              ) : (
+                <PlayerPlayIconBlack
+                  width={24}
+                  height={24}
+                  style={{ transform: [{ scale: 0.85 }] }}
+                />
+              )}
               <Text style={styles.playButtonText}>{shouldResume ? t('home.resume') : t('home.play')}</Text>
             </TouchableOpacity>
 
@@ -1346,11 +1339,21 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
               onPress={handleSaveAction}
               activeOpacity={0.85}
             >
-              <MaterialIcons
-                name={inLibrary ? "bookmark" : "bookmark-outline"}
-                size={24}
-                color="white"
-              />
+              {Platform.OS === 'ios' ? (
+                <ExpoBlurView intensity={35} tint="light" style={styles.saveButtonBlur}>
+                  <MaterialIcons
+                    name={inLibrary ? "bookmark" : "bookmark-outline"}
+                    size={24}
+                    color="white"
+                  />
+                </ExpoBlurView>
+              ) : (
+                <MaterialIcons
+                  name={inLibrary ? "bookmark" : "bookmark-outline"}
+                  size={24}
+                  color="white"
+                />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -1503,10 +1506,17 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 30,
     backgroundColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.3)',
+  },
+  saveButtonBlur: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   paginationContainer: {
     flexDirection: 'row',

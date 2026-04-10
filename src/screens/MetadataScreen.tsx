@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import React, { useCallback, useState, useEffect, useMemo, useRef, memo } from 'react';
 import {
   View,
@@ -85,6 +84,14 @@ const BREAKPOINTS = {
 const MemoizedRatingsSection = memo(RatingsSection);
 const MemoizedCommentsSection = memo(CommentsSection);
 const MemoizedCastDetailsModal = memo(CastDetailsModal);
+const noop = (..._args: unknown[]) => {};
+const logger = {
+  log: noop,
+  error: noop,
+  warn: noop,
+  info: noop,
+  debug: noop,
+};
 
 // ... other imports
 
@@ -537,16 +544,7 @@ const MetadataScreen: React.FC = () => {
   // Memoized derived values for performance
   const isReady = useMemo(() => !loading && metadata && !metadataError, [loading, metadata, metadataError]);
 
-  // Log readiness state for debugging
-  React.useEffect(() => {
-    logger.log('🔍 [MetadataScreen] Readiness state:', {
-      isReady,
-      loading,
-      hasMetadata: !!metadata,
-      hasError: !!metadataError,
-      errorMessage: metadataError
-    });
-  }, [isReady, loading, metadata, metadataError]);
+
 
   // Optimized content ready state management
   useEffect(() => {
@@ -717,15 +715,11 @@ const MetadataScreen: React.FC = () => {
   }, [isScreenFocused]);
 
   const handleCommentPress = useCallback((comment: any) => {
-    logger.log('MetadataScreen: handleCommentPress called with comment:', comment?.id);
     if (!isScreenFocused) {
-      logger.log('MetadataScreen: Screen not focused, ignoring');
       return;
     }
-    logger.log('MetadataScreen: Setting selected comment and opening bottomsheet');
     setSelectedComment(comment);
     setCommentBottomSheetVisible(true);
-    logger.log('MetadataScreen: State should be updated now');
   }, [isScreenFocused]);
 
   const handleCommentBottomSheetClose = useCallback(() => {
@@ -757,8 +751,8 @@ const MetadataScreen: React.FC = () => {
 
   // Ultra-optimized animated styles - minimal calculations with conditional updates
   const containerStyle = useAnimatedStyle(() => ({
-    opacity: isScreenFocused ? animations.screenOpacity.value : 0.8,
-  }), [isScreenFocused]);
+    opacity: animations.screenOpacity.value,
+  }), []);
 
   const contentStyle = useAnimatedStyle(() => ({
     opacity: animations.contentOpacity.value,
@@ -775,7 +769,6 @@ const MetadataScreen: React.FC = () => {
 
     // Parse error to extract code and user-friendly message
     const parseError = (error: string) => {
-      logger.log('🔍 Parsing error in MetadataScreen:', error);
 
       // Check for HTTP status codes - handle multiple formats
       // Match patterns like: "status code 500", "status": 500, "Request failed with status code 500"
@@ -786,7 +779,6 @@ const MetadataScreen: React.FC = () => {
 
       if (statusCodeMatch) {
         const code = parseInt(statusCodeMatch[1]);
-        logger.log('✅ Found status code:', code);
         switch (code) {
           case 404:
             return { code: '404', message: t('metadata.content_not_found'), userMessage: t('metadata.content_not_found_desc') };
@@ -894,13 +886,11 @@ const MetadataScreen: React.FC = () => {
 
   // Show error if exists
   if (metadataError || (!loading && !metadata)) {
-    logger.log('❌ MetadataScreen ERROR state:', { metadataError, loading, hasMetadata: !!metadata });
     return ErrorComponent;
   }
 
   // Show loading screen if metadata is not yet available or exit animation hasn't completed
   if (loading || !isContentReady || !loadingScreenExited) {
-    logger.log('⏳ MetadataScreen LOADING state:', { loading, isContentReady, loadingScreenExited, hasMetadata: !!metadata });
     return (
       <MetadataLoadingScreen
         ref={loadingScreenRef}

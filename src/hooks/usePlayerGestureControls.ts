@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import { useRef, useState } from 'react';
 import { Animated, Platform } from 'react-native';
 import { PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
@@ -75,7 +74,7 @@ export const usePlayerGestureControls = (config: GestureControlConfig) => {
           config.setVolume(newVolume);
 
           if (config.debugMode) {
-            logger.log(`[GestureControls] Volume set to: ${newVolume} (Platform: ${Platform.OS}, Sensitivity: ${volumeSensitivity})`);
+            console.log(`[GestureControls] Volume set to: ${newVolume} (Platform: ${Platform.OS}, Sensitivity: ${volumeSensitivity})`);
           }
 
           // Show overlay
@@ -128,7 +127,7 @@ export const usePlayerGestureControls = (config: GestureControlConfig) => {
             Brightness.setBrightnessAsync(newBrightness).catch(() => { });
 
             if (config.debugMode) {
-              logger.log(`[GestureControls] Device brightness set to: ${newBrightness} (Platform: ${Platform.OS}, Sensitivity: ${brightnessSensitivity})`);
+              console.log(`[GestureControls] Device brightness set to: ${newBrightness} (Platform: ${Platform.OS}, Sensitivity: ${brightnessSensitivity})`);
             }
 
             if (!showBrightnessOverlay) {

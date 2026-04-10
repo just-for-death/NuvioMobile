@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import { mmkvStorage } from './mmkvStorage';
 import { Platform } from 'react-native';
 
@@ -60,16 +59,12 @@ class CampaignService {
         try {
             const now = Date.now();
 
-            logger.log('[CampaignService] getActiveCampaign called, API URL:', CAMPAIGN_API_URL);
-
             if (this.campaignQueue.length > 0 && (now - this.lastFetch) < this.CACHE_TTL) {
-                logger.log('[CampaignService] Using cached campaigns');
                 return this.getNextValidCampaign();
             }
 
             const platform = Platform.OS;
             const url = `${CAMPAIGN_API_URL}/api/campaigns/queue?platform=${platform}`;
-            logger.log('[CampaignService] Fetching from:', url);
             const response = await fetch(
                 `${CAMPAIGN_API_URL}/api/campaigns/queue?platform=${platform}`,
                 {
@@ -79,7 +74,7 @@ class CampaignService {
             );
 
             if (!response.ok) {
-                logger.warn('[CampaignService] Failed to fetch campaigns:', response.status);
+                console.warn('[CampaignService] Failed to fetch campaigns:', response.status);
                 return null;
             }
 
@@ -101,17 +96,14 @@ class CampaignService {
                 }
             });
 
-            logger.log('[CampaignService] Fetched campaigns:', campaigns.length, 'CAMPAIGN_API_URL:', CAMPAIGN_API_URL);
-
             this.campaignQueue = campaigns;
             this.currentIndex = 0;
             this.lastFetch = now;
 
             const result = this.getNextValidCampaign();
-            logger.log('[CampaignService] Next valid campaign:', result?.id, result?.type);
             return result;
         } catch (error) {
-            logger.warn('[CampaignService] Error fetching campaigns:', error);
+            console.warn('[CampaignService] Error fetching campaigns:', error);
             return null;
         }
     }

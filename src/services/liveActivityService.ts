@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import { Platform } from 'react-native';
 
 type LiveActivityModule = {
@@ -51,7 +50,7 @@ export async function startOrUpdateDownloadLiveActivity(params: {
 
     const id = mod.startActivity(state, config);
     if (!id) {
-      logger.warn(
+      console.warn(
         '[LiveActivity] startActivity returned undefined. Live Activities require a physical iOS device on iOS 16.2+ and a clean prebuild after enabling the expo-live-activity plugin.'
       );
     }

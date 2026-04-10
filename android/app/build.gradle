@@ -85,15 +85,15 @@ android {
     ndkVersion rootProject.ext.ndkVersion
 
     buildToolsVersion rootProject.ext.buildToolsVersion
-    compileSdk safeExtGet('compileSdkVersion', 36)
+    compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.nuvio.app'
     defaultConfig {
         applicationId 'com.nuvio.app'
-        minSdkVersion safeExtGet('minSdkVersion', 24)
-        targetSdkVersion safeExtGet('targetSdkVersion', 35)
-        versionCode 100
-        versionName "2.0.0"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 40
+        versionName "1.4.4"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -115,7 +115,7 @@ android {
     def abiVersionCodes = ['armeabi-v7a': 1, 'arm64-v8a': 2, 'x86': 3, 'x86_64': 4]
     applicationVariants.all { variant ->
         variant.outputs.each { output ->
-            def baseVersionCode = 100 // Current versionCode 100 from defaultConfig
+            def baseVersionCode = 40 // Current versionCode 40 from defaultConfig
             def abiName = output.getFilter(com.android.build.OutputFile.ABI)
 
             def versionCode = baseVersionCode * 100 // Base multiplier
@@ -159,15 +159,6 @@ android {
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 }
 

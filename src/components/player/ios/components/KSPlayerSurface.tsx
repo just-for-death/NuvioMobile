@@ -101,7 +101,7 @@ export const KSPlayerSurface: React.FC<KSPlayerSurfaceProps> = ({
 
     // Debug: log textTrack prop changes
     React.useEffect(() => {
-        logger.log('[KSPlayerSurface] textTrack prop changed to:', textTrack);
+        console.log('[KSPlayerSurface] textTrack prop changed to:', textTrack);
     }, [textTrack]);
 
     // Handle buffering - KSPlayerComponent uses onBuffering callback

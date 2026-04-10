@@ -5,7 +5,7 @@
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "target": "es2017",
-    "ignoreDeprecations": "5.0",
+    "downlevelIteration": true,
     "typeRoots": [
       "./node_modules/@types",
       "./src/types"

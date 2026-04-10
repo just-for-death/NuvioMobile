@@ -1,4 +1,3 @@
-import { logger } from "../../utils/logger";
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import { mmkvStorage } from '../mmkvStorage';
@@ -87,7 +86,7 @@ class MalAuthService {
   }
 
   private async exchangeToken(code: string, codeVerifier: string, uri: string) {
-    logger.log(`[MalAuth] Attempting token exchange with redirect_uri: '${uri}'`);
+    console.log(`[MalAuth] Attempting token exchange with redirect_uri: '${uri}'`);
     const params = new URLSearchParams();
     params.append('client_id', CLIENT_ID);
     params.append('grant_type', 'authorization_code');
@@ -123,7 +122,7 @@ class MalAuthService {
     this.isAuthenticating = true;
 
     try {
-      logger.log('[MalAuth] Starting login with redirectUri:', REDIRECT_URI);
+      console.log('[MalAuth] Starting login with redirectUri:', REDIRECT_URI);
 
       const codeVerifier = this.generateCodeVerifier();
       const state = this.generateCodeVerifier().substring(0, 20); // Simple random state
@@ -144,7 +143,7 @@ class MalAuthService {
         showInRecents: true,
       });
       
-      logger.log('[MalAuth] Auth prompt result:', result.type);
+      console.log('[MalAuth] Auth prompt result:', result.type);
 
       if (result.type === 'success' && result.url) {
         // Parse code from URL
@@ -157,16 +156,16 @@ class MalAuthService {
         }
         
         // Optional: verify state if you want strict security, though MAL state is optional
-        // if (returnedState !== state) logger.warn('State mismatch');
+        // if (returnedState !== state) console.warn('State mismatch');
 
-        logger.log('[MalAuth] Success! Code received.');
+        console.log('[MalAuth] Success! Code received.');
 
         try {
-          logger.log('[MalAuth] Exchanging code for token...');
+          console.log('[MalAuth] Exchanging code for token...');
           const data = await this.exchangeToken(code, codeVerifier, REDIRECT_URI);
           
           if (data.access_token) {
-            logger.log('[MalAuth] Token exchange successful');
+            console.log('[MalAuth] Token exchange successful');
             this.saveToken({
               accessToken: data.access_token,
               refreshToken: data.refresh_token,
@@ -178,16 +177,16 @@ class MalAuthService {
         } catch (e: any) {
           // Normalize error data
           const errorData = e.response?.data || (e instanceof Error ? { message: e.message, error: (e as any).malError } : e);
-          logger.error('[MalAuth] First Token Exchange Failed:', JSON.stringify(errorData));
+          console.error('[MalAuth] First Token Exchange Failed:', JSON.stringify(errorData));
           
           // Retry with trailing slash if invalid_grant
           if (errorData.error === 'invalid_grant' || (errorData.message && errorData.message.includes('redirection URI'))) {
               const retryUri = REDIRECT_URI + '/';
-              logger.log(`[MalAuth] Retrying with trailing slash: '${retryUri}'`);
+              console.log(`[MalAuth] Retrying with trailing slash: '${retryUri}'`);
               try {
                   const data = await this.exchangeToken(code, codeVerifier, retryUri);
                   if (data.access_token) {
-                    logger.log('[MalAuth] Retry Token exchange successful');
+                    console.log('[MalAuth] Retry Token exchange successful');
                     this.saveToken({
                       accessToken: data.access_token,
                       refreshToken: data.refresh_token,
@@ -198,7 +197,7 @@ class MalAuthService {
                   }
               } catch (retryError: any) {
                    const retryErrorData = retryError.response?.data || (retryError instanceof Error ? { message: retryError.message, error: (retryError as any).malError } : retryError);
-                   logger.error('[MalAuth] Retry Token Exchange Also Failed:', JSON.stringify(retryErrorData));
+                   console.error('[MalAuth] Retry Token Exchange Also Failed:', JSON.stringify(retryErrorData));
                    return `MAL Error: ${retryErrorData.error || 'unknown'} - ${retryErrorData.message || 'No description'}`;
               }
           }
@@ -214,7 +213,7 @@ class MalAuthService {
       
       return false;
     } catch (e: any) {
-      logger.error('[MalAuth] Login Exception', e);
+      console.error('[MalAuth] Login Exception', e);
       return `Login Exception: ${e.message}`;
     } finally {
       this.isAuthenticating = false;
@@ -252,7 +251,7 @@ class MalAuthService {
         return true;
       }
     } catch (e) {
-      logger.error('MAL Token Refresh Error', e);
+      console.error('MAL Token Refresh Error', e);
     }
     return false;
   }

@@ -1,4 +1,3 @@
-import { logger } from "../../utils/logger";
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
 import LottieView from 'lottie-react-native';
@@ -31,7 +30,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
           Lottie.enableMergePathsForKitKatAndAbove(true);
         }
       } catch (error) {
-        logger.warn('Failed to enable merge paths for Android:', error);
+        console.warn('Failed to enable merge paths for Android:', error);
       }
     }
   }, []);
@@ -77,11 +76,9 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
           renderMode: 'SOFTWARE' as any, // Fallback to software rendering if hardware fails
         })}
         // Error handling
-        onAnimationFinish={() => {
-          if (__DEV__) logger.log('Lottie animation finished');
-        }}
+        onAnimationFinish={() => {}}
         onAnimationFailure={(error) => {
-          if (__DEV__) logger.warn('Lottie animation failed:', error);
+          if (__DEV__) console.warn('Lottie animation failed:', error);
         }}
       />
       {text && (

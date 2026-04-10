@@ -1,4 +1,3 @@
-import { logger } from "../utils/logger";
 import { useState, useEffect, useCallback } from 'react';
 import { mmkvStorage } from '../services/mmkvStorage';
 import { StreamingContent } from '../services/catalogService';
@@ -37,7 +36,7 @@ export const useLibrary = () => {
         }
       }
     } catch (error) {
-      if (__DEV__) logger.error('Error loading library items:', error);
+      if (__DEV__) console.error('Error loading library items:', error);
     } finally {
       setLoading(false);
     }
@@ -57,7 +56,7 @@ export const useLibrary = () => {
       // keep legacy for backward-compat
       await mmkvStorage.setItem(LEGACY_LIBRARY_STORAGE_KEY, JSON.stringify(itemsObject));
     } catch (error) {
-      if (__DEV__) logger.error('Error saving library items:', error);
+      if (__DEV__) console.error('Error saving library items:', error);
     }
   }, []);
 
@@ -67,7 +66,7 @@ export const useLibrary = () => {
       await catalogService.addToLibrary({ ...item, inLibrary: true });
       return true;
     } catch (e) {
-      if (__DEV__) logger.error('Error adding to library via catalogService:', e);
+      if (__DEV__) console.error('Error adding to library via catalogService:', e);
       // Fallback local write
       const updatedItems = [...libraryItems, { ...item, inLibrary: true }];
       setLibraryItems(updatedItems);
@@ -83,7 +82,7 @@ export const useLibrary = () => {
       await catalogService.removeFromLibrary(type, id);
       return true;
     } catch (e) {
-      if (__DEV__) logger.error('Error removing from library via catalogService:', e);
+      if (__DEV__) console.error('Error removing from library via catalogService:', e);
       // Fallback local write
       const updatedItems = libraryItems.filter(item => item.id !== id);
       setLibraryItems(updatedItems);

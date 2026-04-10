@@ -28,7 +28,7 @@ export const usePlayerControls = (
     const seekToTime = useCallback((rawSeconds: number) => {
         const timeInSeconds = Math.max(0, Math.min(rawSeconds, duration > 0 ? duration - END_EPSILON : rawSeconds));
 
-        logger.log('[usePlayerControls] seekToTime called:', {
+        console.log('[usePlayerControls] seekToTime called:', {
             rawSeconds,
             timeInSeconds,
             hasMpvRef: !!mpvPlayerRef?.current,
@@ -40,7 +40,7 @@ export const usePlayerControls = (
 
         // ExoPlayer
         if (useExoPlayer && exoPlayerRef?.current && duration > 0) {
-            logger.log(`[usePlayerControls][ExoPlayer] Seeking to ${timeInSeconds}`);
+            console.log(`[usePlayerControls][ExoPlayer] Seeking to ${timeInSeconds}`);
 
             isSeeking.current = true;
             exoPlayerRef.current.seek(timeInSeconds);
@@ -56,7 +56,7 @@ export const usePlayerControls = (
 
         // MPV Player (fallback or when useExoPlayer is false)
         if (mpvPlayerRef?.current && duration > 0) {
-            logger.log(`[usePlayerControls][MPV] Seeking to ${timeInSeconds}`);
+            console.log(`[usePlayerControls][MPV] Seeking to ${timeInSeconds}`);
 
             isSeeking.current = true;
             mpvPlayerRef.current.seek(timeInSeconds);
@@ -70,7 +70,7 @@ export const usePlayerControls = (
             return;
         }
 
-        logger.log('[usePlayerControls] Cannot seek - no valid ref:', {
+        console.log('[usePlayerControls] Cannot seek - no valid ref:', {
             hasExoRef: !!exoPlayerRef?.current,
             hasMpvRef: !!mpvPlayerRef?.current,
             useExoPlayer,
@@ -79,7 +79,7 @@ export const usePlayerControls = (
     }, [duration, paused, setPaused, mpvPlayerRef, exoPlayerRef, useExoPlayer, isSeeking, isMounted]);
 
     const skip = useCallback((seconds: number) => {
-        logger.log('[usePlayerControls] skip called:', { seconds, currentTime, newTime: currentTime + seconds });
+        console.log('[usePlayerControls] skip called:', { seconds, currentTime, newTime: currentTime + seconds });
         seekToTime(currentTime + seconds);
     }, [currentTime, seekToTime]);
 

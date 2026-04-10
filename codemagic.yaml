@@ -33,14 +33,21 @@ workflows:
       - name: Clone KSPlayer
         script: |
           set -e
-          if [ ! -d "../KSPlayer" ]; then
-            echo "KSPlayer not found in cache — cloning..."
-            git clone --depth 1 https://github.com/kingslay/KSPlayer.git ../KSPlayer
+          # cc38cbd is the last commit with KSPlayer.podspec + DisplayCriteria.podspec (v1.1.0).
+          # Newer commits removed both podspecs after restructuring to SPM-only.
+          KSPLAYER_COMMIT="cc38cbd"
+
+          if [ ! -d "../KSPlayer" ] || [ ! -f "../KSPlayer/KSPlayer.podspec" ]; then
+            echo "KSPlayer cache invalid — cloning and checking out $KSPLAYER_COMMIT..."
+            rm -rf ../KSPlayer
+            git clone https://github.com/kingslay/KSPlayer.git ../KSPlayer
+            git -C ../KSPlayer checkout "$KSPLAYER_COMMIT"
           else
-            echo "KSPlayer found in cache — skipping clone."
+            echo "KSPlayer found in cache with KSPlayer.podspec — skipping clone."
           fi
-          echo "KSPlayer contents:"
-          ls ../KSPlayer/*.podspec 2>/dev/null || echo "(no .podspec files at root)"
+
+          echo "Podspecs present:"
+          ls ../KSPlayer/*.podspec
 
       - name: Install CocoaPods
         script: |

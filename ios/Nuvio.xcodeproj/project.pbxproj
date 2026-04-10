@@ -17,10 +17,10 @@
 		7069406A1E324608A86CC6C9 /* ViewHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = D296491CC4F4406182E2A2BC /* ViewHelpers.swift */; };
 		94F843501BFD40C384CBB500 /* View+applyWidgetURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0AC8A8984F4495492E13EFD /* View+applyWidgetURL.swift */; };
 		9BE191900481495083B7ECC1 /* Color+hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = B36264437D84461BBC2BB706 /* Color+hex.swift */; };
-		9FBA88F42E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerViewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FBA88F32E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerViewManager.swift */; };
-		9FBA88F52E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FBA88F12E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerModule.swift */; };
-		9FBA88F62E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 9FBA88F02E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerManager.m */; };
-		9FBA88F72E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FBA88F22E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerView.swift */; };
+		9FBA88F42E86ECD700892850 /* KSPlayerViewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FBA88F32E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerViewManager.swift */; };
+		9FBA88F52E86ECD700892850 /* KSPlayerModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FBA88F12E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerModule.swift */; };
+		9FBA88F62E86ECD700892850 /* KSPlayerManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 9FBA88F02E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerManager.m */; };
+		9FBA88F72E86ECD700892850 /* KSPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FBA88F22E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerView.swift */; };
 		B3BB1BBDA8C742DC9A32EACF /* Image+dynamic.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03926C841844CC38C468345 /* Image+dynamic.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		BD4FE0C298E078EA08432C75 /* libPods-Nuvio.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7206543A5AAE2788326BFBC7 /* libPods-Nuvio.a */; };
@@ -71,10 +71,10 @@
 		7206543A5AAE2788326BFBC7 /* libPods-Nuvio.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Nuvio.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7EC866223BB0FA7280D468BF /* Pods-Nuvio.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Nuvio.debug.xcconfig"; path = "Target Support Files/Pods-Nuvio/Pods-Nuvio.debug.xcconfig"; sourceTree = "<group>"; };
 		9C77B925A48A4711B3B59C6A /* LiveActivityWidget.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; path = LiveActivityWidget.swift; sourceTree = "<group>"; };
-		9FBA88F02E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Nuvio/KSPlayerManager.m; sourceTree = "<group>"; };
-		9FBA88F12E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Nuvio/KSPlayerModule.swift; sourceTree = "<group>"; };
-		9FBA88F22E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Nuvio/KSPlayerView.swift; sourceTree = "<group>"; };
-		9FBA88F32E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerViewManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Nuvio/KSPlayerViewManager.swift; sourceTree = "<group>"; };
+		9FBA88F02E86ECD700892850 /* KSPlayerManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Nuvio/KSPlayerManager.m; sourceTree = "<group>"; };
+		9FBA88F12E86ECD700892850 /* KSPlayerModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Nuvio/KSPlayerModule.swift; sourceTree = "<group>"; };
+		9FBA88F22E86ECD700892850 /* KSPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Nuvio/KSPlayerView.swift; sourceTree = "<group>"; };
+		9FBA88F32E86ECD700892850 /* KSPlayerViewManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Nuvio/KSPlayerViewManager.swift; sourceTree = "<group>"; };
 		A0AC8A8984F4495492E13EFD /* View+applyWidgetURL.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; path = "View+applyWidgetURL.swift"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Nuvio/SplashScreen.storyboard; sourceTree = "<group>"; };
 		B36264437D84461BBC2BB706 /* Color+hex.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; path = "Color+hex.swift"; sourceTree = "<group>"; };
@@ -112,10 +112,10 @@
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
 				F11748442D0722820044C1D9 /* Nuvio-Bridging-Header.h */,
-				9FBA88F02E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerManager.m */,
-				9FBA88F12E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerModule.swift */,
-				9FBA88F22E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerView.swift */,
-				9FBA88F32E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerViewManager.swift */,
+				9FBA88F02E86ECD700892850 /* KSPlayerManager.m */,
+				9FBA88F12E86ECD700892850 /* KSPlayerModule.swift */,
+				9FBA88F22E86ECD700892850 /* KSPlayerView.swift */,
+				9FBA88F32E86ECD700892850 /* KSPlayerViewManager.swift */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
@@ -546,10 +546,10 @@
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
 				F4B2944DA5D06650F3B40F2A /* ExpoModulesProvider.swift in Sources */,
-				9FBA88F42E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerViewManager.swift in Sources */,
-				9FBA88F52E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerModule.swift in Sources */,
-				9FBA88F62E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerManager.m in Sources */,
-				9FBA88F72E86ECD700892850 /* ../KSPlayer/RNBridge/KSPlayerView.swift in Sources */,
+				9FBA88F42E86ECD700892850 /* KSPlayerViewManager.swift in Sources */,
+				9FBA88F52E86ECD700892850 /* KSPlayerModule.swift in Sources */,
+				9FBA88F62E86ECD700892850 /* KSPlayerManager.m in Sources */,
+				9FBA88F72E86ECD700892850 /* KSPlayerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

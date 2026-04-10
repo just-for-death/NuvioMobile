@@ -49,7 +49,7 @@ workflows:
 
       - name: Build Archive (Unsigned)
         script: |
-          set -e
+          set -eo pipefail
           mkdir -p /tmp/xcodebuild_logs
 
           xcodebuild archive \
@@ -65,8 +65,7 @@ workflows:
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
             MTL_ENABLE_DEBUG_INFO=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
-            2>&1 | tee /tmp/xcodebuild_logs/archive.log \
-            | xcpretty --utf --color && exit ${PIPESTATUS[0]}
+            2>&1 | tee /tmp/xcodebuild_logs/archive.log
 
       - name: Package Unsigned IPA
         script: |

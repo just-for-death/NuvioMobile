@@ -30,27 +30,30 @@ workflows:
           set -e
           npm install --legacy-peer-deps
 
-      - name: Clone KSPlayer (shallow, cached)
+      - name: Clone KSPlayer (pinned to v1.1.0)
         script: |
           set -e
-          # Pin to the exact commit that matches Podfile.lock to ensure
-          # DisplayCriteria.podspec is present (removed in newer main commits).
-          KSPLAYER_COMMIT="f163ac6195f240b6fa5b8225aeb39ec811a70c62"
-          if [ ! -d "../KSPlayer" ]; then
-            echo "KSPlayer not found in cache — cloning at pinned commit..."
-            git clone https://github.com/kingslay/KSPlayer.git ../KSPlayer
-            git -C ../KSPlayer checkout "$KSPLAYER_COMMIT"
+          # Clone KSPlayer at the exact tag matching Podfile.lock (v1.1.0).
+          # This tag has DisplayCriteria.podspec; newer main commits removed it.
+          KSPLAYER_TAG="1.1.0"
+
+          # If cache is missing or DisplayCriteria.podspec is absent, re-clone.
+          if [ ! -d "../KSPlayer" ] || [ ! -f "../KSPlayer/DisplayCriteria.podspec" ]; then
+            echo "KSPlayer cache invalid or missing DisplayCriteria.podspec — cloning tag $KSPLAYER_TAG..."
+            rm -rf ../KSPlayer
+            git clone --depth 1 --branch "$KSPLAYER_TAG" \
+              https://github.com/kingslay/KSPlayer.git ../KSPlayer
           else
-            # Verify cache is on the correct commit; reset if drifted
-            CURRENT=$(git -C ../KSPlayer rev-parse HEAD 2>/dev/null || echo "unknown")
-            if [ "$CURRENT" != "$KSPLAYER_COMMIT" ]; then
-              echo "Cached KSPlayer is on wrong commit ($CURRENT). Resetting..."
-              git -C ../KSPlayer fetch origin
-              git -C ../KSPlayer checkout "$KSPLAYER_COMMIT"
-            else
-              echo "KSPlayer found in cache at correct commit — skipping clone."
-            fi
+            echo "KSPlayer v$KSPLAYER_TAG found in cache with DisplayCriteria.podspec — skipping clone."
           fi
+
+          # Fail fast with a clear error rather than a confusing CocoaPods message.
+          if [ ! -f "../KSPlayer/DisplayCriteria.podspec" ]; then
+            echo "ERROR: DisplayCriteria.podspec still missing after clone!"
+            ls ../KSPlayer/*.podspec 2>/dev/null || echo "No .podspec files found in ../KSPlayer"
+            exit 1
+          fi
+          echo "Verified: DisplayCriteria.podspec present."
 
       - name: Install CocoaPods
         script: |

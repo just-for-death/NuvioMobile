@@ -49,14 +49,13 @@ target 'Nuvio' do
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
 
-  # KSPlayer dependencies
-  # Use the local checkout so we can patch subtitle rendering (and other behaviors) without forking.
-  pod 'KSPlayer', :path => '../KSPlayer'
-  # DisplayCriteria was a standalone podspec in older KSPlayer versions.
-  # Newer main branch merged it into KSPlayer directly — skip if absent.
-  if File.exist?(File.join(__dir__, '..', 'KSPlayer', 'DisplayCriteria.podspec'))
-    pod 'DisplayCriteria', :path => '../KSPlayer', :modular_headers => true
-  end
+  # KSPlayer — pinned to the last commit (cc38cbd) that contains CocoaPods podspecs.
+  # The repo migrated to SPM-only after this commit, removing KSPlayer.podspec and
+  # DisplayCriteria.podspec. Using :git + :commit lets CocoaPods handle the clone
+  # reliably without a separate CI step.
+  KSPLAYER_COMMIT = 'cc38cbddb20589005195df9e4f0d7660ee1504ca'
+  pod 'KSPlayer', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => KSPLAYER_COMMIT
+  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => KSPLAYER_COMMIT, :modular_headers => true
   pod 'FFmpegKit', :git => 'https://github.com/kingslay/FFmpegKit.git', :branch => 'main', :modular_headers => true
   pod 'Libass', :git => 'https://github.com/kingslay/FFmpegKit.git', :branch => 'main'
 

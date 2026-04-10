@@ -22,32 +22,12 @@ workflows:
         - node_modules
         - ios/Pods
         - ~/Library/Caches/CocoaPods
-        - ../KSPlayer
 
     scripts:
       - name: Install Node dependencies
         script: |
           set -e
           npm install --legacy-peer-deps
-
-      - name: Clone KSPlayer
-        script: |
-          set -e
-          # cc38cbd is the last commit with KSPlayer.podspec + DisplayCriteria.podspec (v1.1.0).
-          # Newer commits removed both podspecs after restructuring to SPM-only.
-          KSPLAYER_COMMIT="cc38cbd"
-
-          if [ ! -d "../KSPlayer" ] || [ ! -f "../KSPlayer/KSPlayer.podspec" ]; then
-            echo "KSPlayer cache invalid — cloning and checking out $KSPLAYER_COMMIT..."
-            rm -rf ../KSPlayer
-            git clone https://github.com/kingslay/KSPlayer.git ../KSPlayer
-            git -C ../KSPlayer checkout "$KSPLAYER_COMMIT"
-          else
-            echo "KSPlayer found in cache with KSPlayer.podspec — skipping clone."
-          fi
-
-          echo "Podspecs present:"
-          ls ../KSPlayer/*.podspec
 
       - name: Install CocoaPods
         script: |

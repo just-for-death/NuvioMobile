@@ -368,11 +368,10 @@ class KSPlayerView: UIView {
                 "id": Int(track.trackID), // Use actual track ID, not array index
                 "index": index, // Keep index for backward compatibility
                 "name": track.name,
-                "language": track.language ?? "Unknown",
+                "language": track.languageCode ?? "Unknown", // Fallback to languageCode
                 "languageCode": track.languageCode ?? "",
                 "isEnabled": track.isEnabled,
-                "bitRate": track.bitRate,
-                "bitDepth": track.bitDepth
+                "bitRate": track.bitRate
             ]
         }
 
@@ -381,7 +380,7 @@ class KSPlayerView: UIView {
                 "id": Int(track.trackID), // Use actual track ID, not array index
                 "index": index, // Keep index for backward compatibility
                 "name": track.name,
-                "language": track.language ?? "Unknown",
+                "language": track.languageCode ?? "Unknown", // Fallback to languageCode
                 "languageCode": track.languageCode ?? "",
                 "isEnabled": track.isEnabled,
                 "isImageSubtitle": track.isImageSubtitle
